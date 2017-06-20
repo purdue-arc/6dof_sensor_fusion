@@ -33,10 +33,14 @@ include_directories(
 
 add_library(ekf include/m7_sensor_fusion/EKF.cpp
 				include/m7_sensor_fusion/Types.h
-				include/m7_sensor_fusion/Parameters.h)
+				include/m7_sensor_fusion/Parameters.h
+				include/m7_sensor_fusion/Jacobian.cpp)
 target_link_libraries(ekf ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
 
 add_executable(sensor_fusion src/sensor_fusion.cpp)
 target_link_libraries(sensor_fusion ${catkin_LIBRARIES} ekf)
+
+add_executable(sf_test test/unit_test.cpp)
+target_link_libraries(sf_test ${catkin_LIBRARIES} ekf)
 
 

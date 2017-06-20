@@ -7,7 +7,7 @@
 
 #include "EKF.h"
 
-EKF::EKF() {
+EKF::EKF(bool test) {
 	ros::NodeHandle nh;
 
 	// get the transform between the imu and base
@@ -30,7 +30,10 @@ EKF::EKF() {
 		return;
 	}
 
-	ros::spin();
+	if(!test)
+	{
+		ros::spin();
+	}
 }
 
 EKF::~EKF() {
@@ -52,31 +55,24 @@ void EKF::dipa_callback(geometry_msgs::TwistWithCovarianceStampedConstPtr& msg)
 
 }
 
-State EKF::process(State prior)
+State EKF::process(State prior, ros::Time t)
 {
+	double dt = (t - prior.t).toSec();
+
+	State posterior;
+
+	posterior.t = t;
+
+	posterior.setPos(prior.getPos() + dt*prior.getVel() + 0.5*dt*dt*prior.getAccel());
+
+	posterior.setVel(prior.getVel() + dt*prior.getAccel());
+
+	posterior.setAccel(prior.getAccel());
+
 
 }
 
 State EKF::update(State prior, IMUMeasurement measurement)
 {
-
-}
-
-Eigen::Matrix<double, 16, 16> EKF::computeStateTransitionJacobian(double dt)
-{
-	Eigen::Matrix<double, 16, 16> F;
-
-	F << 1, 0, 0, dt, 0, 0, 0.5*dt*dt, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-			0, 1, 0, 0, dt, 0, 0, 0.5*dt*dt, 0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 1, 0, 0, dt, 0, 0, 0.5*dt*dt, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 1, 0, 0, dt, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 1, 0, 0, dt, 0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0, 1, 0, 0, dt, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0;
-			//TODO add the quaternion update part
-
-
 
 }

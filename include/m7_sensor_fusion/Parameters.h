@@ -13,6 +13,14 @@
 #define BASE_FRAME "base_link"
 #define IMU_FRAME "imu_frame"
 
+#define INITIAL_POS_SIGMA 10000
+#define INITIAL_VEL_SIGMA 10
+#define INITIAL_ACCEL_SIGMA 10
+#define INITIAL_QUAT_SIGMA 10
+#define INITIAL_OMEGA_SIGMA 10
+
+#define G 9.815
+
 
 
 #endif /* M7_SENSOR_FUSION_INCLUDE_M7_SENSOR_FUSION_PARAMETERS_H_ */

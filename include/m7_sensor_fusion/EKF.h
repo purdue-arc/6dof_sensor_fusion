@@ -37,18 +37,22 @@ public:
 
 	tf::TransformListener tf_listener; // listens for transforms
 
-	EKF();
+	EKF(bool test = false);
 	virtual ~EKF();
 
 	void imu_callback(sensor_msgs::ImuConstPtr& msg);
 	void mantis_callback(geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
 	void dipa_callback(geometry_msgs::TwistWithCovarianceStampedConstPtr& msg);
 
-	State process(State prior);
+	State process(State prior, ros::Time t);
 
 	State update(State prior, IMUMeasurement measurement);
 
-	Eigen::Matrix<double, 16, 16> computeStateTransitionJacobian(double dt);
+	Eigen::Matrix<double, 16, 16> computeStateTransitionJacobian(State est, double dt);
+
+	Eigen::Matrix<double, 6, 16> computeIMUMeasurementJacobian(State est);
+
+
 };
 
 #endif /* M7_SENSOR_FUSION_INCLUDE_M7_SENSOR_FUSION_EKF_H_ */
