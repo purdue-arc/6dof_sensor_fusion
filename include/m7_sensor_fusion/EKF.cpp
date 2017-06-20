@@ -62,7 +62,21 @@ State EKF::update(State prior, IMUMeasurement measurement)
 
 }
 
-Eigen::Matrix<double, 16, 16> EKF::computeStateTransitionMatrix(double dt)
+Eigen::Matrix<double, 16, 16> EKF::computeStateTransitionJacobian(double dt)
 {
+	Eigen::Matrix<double, 16, 16> F;
+
+	F << 1, 0, 0, dt, 0, 0, 0.5*dt*dt, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 1, 0, 0, dt, 0, 0, 0.5*dt*dt, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 1, 0, 0, dt, 0, 0, 0.5*dt*dt, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 1, 0, 0, dt, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 1, 0, 0, dt, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 1, 0, 0, dt, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0;
+			//TODO add the quaternion update part
+
+
 
 }

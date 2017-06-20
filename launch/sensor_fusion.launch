@@ -1,7 +1,7 @@
 <launch>
 
 	<group ns="m7">
-		<node name="sensor_fusion" pkg="m7_sensor_fusion" type="sensor_fusion"/>
+		<node name="sensor_fusion" pkg="m7_sensor_fusion" type="sensor_fusion" output="screen"/>
 	</group>
 	
 	<node pkg="tf" type="static_transform_publisher" name="IMU_base" 

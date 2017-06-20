@@ -48,7 +48,7 @@ public:
 
 	State update(State prior, IMUMeasurement measurement);
 
-	Eigen::Matrix<double, 16, 16> computeStateTransitionMatrix(double dt);
+	Eigen::Matrix<double, 16, 16> computeStateTransitionJacobian(double dt);
 };
 
 #endif /* M7_SENSOR_FUSION_INCLUDE_M7_SENSOR_FUSION_EKF_H_ */
