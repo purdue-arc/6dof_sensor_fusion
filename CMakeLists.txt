@@ -31,7 +31,9 @@ include_directories(
 )
 
 
-add_library(ekf include/m7_sensor_fusion/EKF.cpp)
+add_library(ekf include/m7_sensor_fusion/EKF.cpp
+				include/m7_sensor_fusion/Types.h
+				include/m7_sensor_fusion/Parameters.h)
 target_link_libraries(ekf ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
 
 add_executable(sensor_fusion src/sensor_fusion.cpp)
