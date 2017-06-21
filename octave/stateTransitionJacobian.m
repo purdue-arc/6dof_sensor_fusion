@@ -37,7 +37,7 @@ trans = [x + dx*dt + 0.5*dt*dt*ax;
   
   jaco = jacobian(trans, state)
   
-  %ccode(jaco, 'file', 'stateTransitionJacobian.c')
+  ccode(jaco, 'file', 'stateTransitionJacobian.c')
   
  
 
