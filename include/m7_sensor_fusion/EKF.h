@@ -52,6 +52,12 @@ public:
 
 	Eigen::Matrix<double, 6, 16> computeIMUMeasurementJacobian(State est);
 
+	Eigen::Matrix<double, 7, 16> computePOSEMeasurementJacobian(State est);
+
+	Eigen::Matrix<double, 16, 16> computeStateProcessError(double dt);
+
+	Eigen::MatrixXd combineMeasurements(std::vector<Measurement> mats);
+
 
 };
 

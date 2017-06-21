@@ -8,13 +8,12 @@
 #ifndef M7_SENSOR_FUSION_INCLUDE_M7_SENSOR_FUSION_TYPES_H_
 #define M7_SENSOR_FUSION_INCLUDE_M7_SENSOR_FUSION_TYPES_H_
 
-
-struct State{
+struct State {
 	Eigen::Matrix<double, 16, 1> vec; //x, y, z, dx, dy, dz, ax, ay, az, q0, q1, q2, q3, wx, wy, wz
 	Eigen::Matrix<double, 16, 16> Sigma;
 	ros::Time t;
 
-	State(){
+	State() {
 		vec(0) = 0.0;
 		vec(1) = 0.0;
 		vec(2) = 0.0;
@@ -57,106 +56,100 @@ struct State{
 		t = ros::Time(0);
 	}
 
-	double x(){
+	double x() {
 		return vec(0);
 	}
-	double y(){
+	double y() {
 		return vec(1);
 	}
-	double z(){
+	double z() {
 		return vec(2);
 	}
-	double dx(){
+	double dx() {
 		return vec(3);
 	}
-	double dy(){
+	double dy() {
 		return vec(4);
 	}
-	double dz(){
+	double dz() {
 		return vec(5);
 	}
-	double ax(){
+	double ax() {
 		return vec(6);
 	}
-	double ay(){
+	double ay() {
 		return vec(7);
 	}
-	double az(){
+	double az() {
 		return vec(8);
 	}
-	double q0(){
+	double q0() {
 		return vec(9);
 	}
-	double q1(){
+	double q1() {
 		return vec(10);
 	}
-	double q2(){
+	double q2() {
 		return vec(11);
 	}
-	double q3(){
+	double q3() {
 		return vec(12);
 	}
-	double wx(){
+	double wx() {
 		return vec(13);
 	}
-	double wy(){
+	double wy() {
 		return vec(14);
 	}
-	double wz(){
+	double wz() {
 		return vec(15);
 	}
 
-	Eigen::Vector3d getPos(){
+	Eigen::Vector3d getPos() {
 		return Eigen::Vector3d(x(), y(), z());
 	}
 
-	Eigen::Vector3d getVel(){
+	Eigen::Vector3d getVel() {
 		return Eigen::Vector3d(dx(), dy(), dz());
 	}
 
-	Eigen::Vector3d getAccel(){
+	Eigen::Vector3d getAccel() {
 		return Eigen::Vector3d(ax(), ay(), az());
 	}
 
-	Eigen::Vector3d getOmega(){
+	Eigen::Vector3d getOmega() {
 		return Eigen::Vector3d(wx(), wy(), wz());
 	}
 
-	Eigen::Quaterniond getQuaternion()
-	{
+	Eigen::Quaterniond getQuaternion() {
 		return Eigen::Quaterniond(q0(), q1(), q2(), q3());
 	}
 
-	void setPos(Eigen::Vector3d in)
-	{
+	void setPos(Eigen::Vector3d in) {
 		vec(0) = in(0);
 		vec(1) = in(1);
 		vec(2) = in(2);
 	}
 
-	void setVel(Eigen::Vector3d in)
-	{
+	void setVel(Eigen::Vector3d in) {
 		vec(3) = in(0);
 		vec(4) = in(1);
 		vec(5) = in(2);
 	}
 
-	void setAccel(Eigen::Vector3d in)
-	{
+	void setAccel(Eigen::Vector3d in) {
 		vec(6) = in(0);
 		vec(7) = in(1);
 		vec(8) = in(2);
 	}
 
-	void setOmega(Eigen::Vector3d in)
-	{
+	void setOmega(Eigen::Vector3d in) {
 		vec(13) = in(0);
 		vec(14) = in(1);
 		vec(15) = in(2);
 	}
 
-	void setQuat(Eigen::Quaterniond in)
-	{
+	void setQuat(Eigen::Quaterniond in) {
 		vec(9) = in.w();
 		vec(10) = in.x();
 		vec(11) = in.y();
@@ -165,11 +158,111 @@ struct State{
 
 };
 
-struct IMUMeasurement{
+struct IMUMeasurement {
 	Eigen::Matrix<double, 6, 1> z; // ax, ay, az, wx, wy, wz
 	Eigen::Matrix<double, 6, 6> Sigma;
 	ros::Time t;
 };
 
+struct PoseMeasurement {
+	Eigen::Matrix<double, 7, 1> z; // x, y, z, q0, q1, q2, q3
+	Eigen::Matrix<double, 7, 7> Sigma;
+	ros::Time t;
+};
+
+struct TwistMeasurement {
+	Eigen::Matrix<double, 6, 1> z; // dx, dy, dz, wx, wy, wz
+	Eigen::Matrix<double, 6, 6> Sigma;
+	ros::Time t;
+};
+
+struct DynamicMeasurement {
+	Eigen::MatrixXd z;
+	Eigen::MatrixXd Sigma;
+	ros::Time t;
+};
+
+struct Measurement {
+private:
+	enum Type {
+		IMU, POSE, TWIST
+	};
+	Type type;
+	IMUMeasurement imu;
+	PoseMeasurement pose;
+	TwistMeasurement twist;
+
+public:
+
+	Measurement(IMUMeasurement z) {
+		imu = z;
+		type = IMU;
+	}
+
+	Measurement(PoseMeasurement z) {
+		pose = z;
+		type = POSE;
+	}
+
+	Measurement(TwistMeasurement z) {
+		twist = z;
+		type = TWIST;
+	}
+
+	ros::Time getTime() {
+		switch (type) {
+		case IMU:
+			return imu.t;
+			break;
+		case POSE:
+			return pose.t;
+			break;
+		case TWIST:
+			return twist.t;
+			break;
+		default:
+			ROS_FATAL("measurement type invalid");
+			return ros::Time(0);
+			break;
+		}
+	}
+
+	Eigen::MatrixXd getSigma() {
+		switch (type) {
+		case IMU:
+			return imu.Sigma;
+			break;
+		case POSE:
+			return pose.Sigma;
+			break;
+		case TWIST:
+			return twist.Sigma;
+			break;
+		default:
+			ROS_FATAL("measurement type invalid");
+			return Eigen::MatrixXd();
+			break;
+		}
+	}
+
+	Eigen::MatrixXd getZ() {
+		switch (type) {
+		case IMU:
+			return imu.z;
+			break;
+		case POSE:
+			return pose.z;
+			break;
+		case TWIST:
+			return twist.z;
+			break;
+		default:
+			ROS_FATAL("measurement type invalid");
+			return Eigen::MatrixXd();
+			break;
+		}
+	}
+
+};
 
 #endif /* M7_SENSOR_FUSION_INCLUDE_M7_SENSOR_FUSION_TYPES_H_ */

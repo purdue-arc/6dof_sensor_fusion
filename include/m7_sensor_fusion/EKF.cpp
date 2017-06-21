@@ -69,6 +69,31 @@ State EKF::process(State prior, ros::Time t)
 
 	posterior.setAccel(prior.getAccel());
 
+	double theta = prior.getOmega().norm() * dt;
+
+	Eigen::Vector3d omega_hat = prior.getOmega() / (theta/dt);
+
+	Eigen::Quaterniond dq;
+
+	if(theta == 0)
+	{
+		dq = Eigen::Quaterniond(cos(theta/2.0), 0, 0, 0);
+	}
+	else
+	{
+		double st2 = sin(theta/2.0);
+		dq = Eigen::Quaterniond(cos(theta/2.0), omega_hat.x()*st2, omega_hat.y()*st2, omega_hat.z()*st2);
+	}
+
+	posterior.setQuat(prior.getQuaternion() * dq);
+
+	posterior.setOmega(prior.getOmega());
+
+	Eigen::Matrix<double, 16, 16> F = computeStateTransitionJacobian(prior, dt);
+
+	posterior.Sigma = F * prior.Sigma * F.transpose() + computeStateProcessError(dt);
+
+	return posterior;
 
 }
 
