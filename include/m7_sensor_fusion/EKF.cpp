@@ -77,7 +77,7 @@ State EKF::process(State prior, ros::Time t)
 
 	if(theta == 0)
 	{
-		dq = Eigen::Quaterniond(cos(theta/2.0), 0, 0, 0);
+		dq = Eigen::Quaterniond(1, 0, 0, 0);
 	}
 	else
 	{
@@ -99,7 +99,20 @@ State EKF::process(State prior, ros::Time t)
 
 State EKF::update(State prior, MeasurementCombination mats)
 {
-	//Eigen::Matrix<double, mats.z.rows(), 1> = mats.z - mats
+	Eigen::VectorXd y = mats.z - mats.H * prior.vec; //residual
+
+	Eigen::MatrixXd S = mats.H * prior.Sigma * mats.H.transpose() + mats.Sigma;
+
+	Eigen::MatrixXd K = prior.Sigma * mats.H.transpose() * S.lu().inverse();
+
+	State posterior = prior;
+
+	posterior.vec = prior.vec + K * y;
+	posterior.Sigma = (Eigen::MatrixXd::Identity(STATE_VECTOR_SIZE, STATE_VECTOR_SIZE) - K * mats.H) * prior.Sigma;
+
+	old_states.push_back(prior);
+
+	return posterior;
 }
 
 
@@ -131,6 +144,106 @@ State EKF::findClosestState(ros::Time t)
 
 Measurement EKF::predictMeasurementForward(Measurement z, ros::Time new_t){
 
+	double dt = new_t.toSec() - z.getTime().toSec();
+
+	ROS_ASSERT(dt > 0);
+
+	if(z.getType() == Measurement::IMU)
+	{
+		// same measurement more variance
+		Eigen::Matrix<double, 6, 6> R;
+		R(0, 0) = dt*0.01;
+		R(1, 1) = dt*0.01;
+		R(2, 2) = dt*0.01;
+		R(3, 3) = dt*0.005;
+		R(4, 4) = dt*0.005;
+		R(5, 5) = dt*0.005;
+
+		IMUMeasurement imuz;
+
+		imuz.H = z.getH();
+		imuz.z = z.getZ();
+		imuz.t = new_t;
+		imuz.Sigma = z.getSigma() + R;
+
+		return Measurement(imuz);
+	}
+	else if(z.getType() == Measurement::POSE)
+	{
+		State reference = this->findClosestState(z.getTime());
+
+		reference.setPos(Eigen::Vector3d(z.getZ()(0), z.getZ()(1), z.getZ()(2)));
+
+		reference.setQuat(Eigen::Quaterniond(z.getZ()(3), z.getZ()(4), z.getZ()(5), z.getZ()(6)));
+
+		reference = this->process(reference, reference.t + ros::Duration(dt));
+
+		PoseMeasurement posez;
+
+		posez.H = z.getH();
+		posez.t = new_t;
+
+		posez.z(0) = reference.x();
+		posez.z(1) = reference.y();
+		posez.z(2) = reference.z();
+		posez.z(3) = reference.q0();
+		posez.z(4) = reference.q1();
+		posez.z(5) = reference.q2();
+		posez.z(6) = reference.q3();
+
+		Eigen::Matrix<double, 7, 7> R;
+		R(0, 0) = dt*1;
+		R(1, 1) = dt*1;
+		R(2, 2) = dt*1;
+		R(3, 3) = dt*1;
+		R(4, 4) = dt*1;
+		R(5, 5) = dt*1;
+		R(6, 6) = dt*1;
+
+		posez.Sigma = z.getSigma() + R;
+
+		return Measurement(posez);
+	}
+
+	else if(z.getType() == Measurement::TWIST)
+	{
+		State reference = this->findClosestState(z.getTime());
+
+		reference.setVel(Eigen::Vector3d(z.getZ()(0), z.getZ()(1), z.getZ()(2)));
+
+		reference.setOmega(Eigen::Vector3d(z.getZ()(3), z.getZ()(4), z.getZ()(5)));
+
+		reference = this->process(reference, reference.t + ros::Duration(dt));
+
+		TwistMeasurement twistz;
+
+		twistz.H = z.getH();
+		twistz.t = new_t;
+
+		twistz.z(0) = reference.dx();
+		twistz.z(1) = reference.dy();
+		twistz.z(2) = reference.dz();
+		twistz.z(3) = reference.wx();
+		twistz.z(4) = reference.wy();
+		twistz.z(5) = reference.wz();
+
+		Eigen::Matrix<double, 6, 6> R;
+		R(0, 0) = dt*0.5;
+		R(1, 1) = dt*0.5;
+		R(2, 2) = dt*0.5;
+		R(3, 3) = dt*0.5;
+		R(4, 4) = dt*0.5;
+		R(5, 5) = dt*0.5;
+
+		twistz.Sigma = z.getSigma() + R;
+
+		return Measurement(twistz);
+	}
+	else
+	{
+		ROS_FATAL("invalid type for measurement interpolation!");
+		return Measurement();
+	}
 }
 
 void EKF::addMeasurement(Measurement z){

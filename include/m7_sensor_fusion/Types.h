@@ -180,10 +180,12 @@ struct TwistMeasurement {
 };
 
 struct Measurement {
-private:
+
 	enum Type {
 		IMU, POSE, TWIST, NONE
 	};
+
+private:
 	Type type;
 	IMUMeasurement imu;
 	PoseMeasurement pose;

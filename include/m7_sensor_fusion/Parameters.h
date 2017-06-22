@@ -8,10 +8,13 @@
 #ifndef M7_SENSOR_FUSION_INCLUDE_M7_SENSOR_FUSION_PARAMETERS_H_
 #define M7_SENSOR_FUSION_INCLUDE_M7_SENSOR_FUSION_PARAMETERS_H_
 
-#define MAXIMUM_OLD_STATES 600
+#define MAXIMUM_OLD_STATES 1000
 
 #define BASE_FRAME "base_link"
 #define IMU_FRAME "imu_frame"
+
+// rate in hz which the state will be published at
+#define STATE_PUBLISH_RATE 100
 
 #define STATE_VECTOR_SIZE 16
 #define MAX_ROWS 19
