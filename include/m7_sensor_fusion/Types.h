@@ -9,8 +9,8 @@
 #define M7_SENSOR_FUSION_INCLUDE_M7_SENSOR_FUSION_TYPES_H_
 
 struct State {
-	Eigen::Matrix<double, 16, 1> vec; //x, y, z, dx, dy, dz, ax, ay, az, q0, q1, q2, q3, wx, wy, wz
-	Eigen::Matrix<double, 16, 16> Sigma;
+	Eigen::Matrix<double, STATE_VECTOR_SIZE, 1> vec; //x, y, z, dx, dy, dz, ax, ay, az, q0, q1, q2, q3, wx, wy, wz
+	Eigen::Matrix<double, STATE_VECTOR_SIZE, STATE_VECTOR_SIZE> Sigma;
 	ros::Time t;
 
 	State() {
@@ -162,30 +162,27 @@ struct IMUMeasurement {
 	Eigen::Matrix<double, 6, 1> z; // ax, ay, az, wx, wy, wz
 	Eigen::Matrix<double, 6, 6> Sigma;
 	ros::Time t;
+	Eigen::Matrix<double, 6, STATE_VECTOR_SIZE> H;
 };
 
 struct PoseMeasurement {
 	Eigen::Matrix<double, 7, 1> z; // x, y, z, q0, q1, q2, q3
 	Eigen::Matrix<double, 7, 7> Sigma;
 	ros::Time t;
+	Eigen::Matrix<double, 7, STATE_VECTOR_SIZE> H;
 };
 
 struct TwistMeasurement {
 	Eigen::Matrix<double, 6, 1> z; // dx, dy, dz, wx, wy, wz
 	Eigen::Matrix<double, 6, 6> Sigma;
-	ros::Time t;
-};
-
-struct DynamicMeasurement {
-	Eigen::MatrixXd z;
-	Eigen::MatrixXd Sigma;
+	Eigen::Matrix<double, 6, STATE_VECTOR_SIZE> H;
 	ros::Time t;
 };
 
 struct Measurement {
 private:
 	enum Type {
-		IMU, POSE, TWIST
+		IMU, POSE, TWIST, NONE
 	};
 	Type type;
 	IMUMeasurement imu;
@@ -193,6 +190,10 @@ private:
 	TwistMeasurement twist;
 
 public:
+
+	Measurement(){
+		type = NONE;
+	}
 
 	Measurement(IMUMeasurement z) {
 		imu = z;
@@ -207,6 +208,10 @@ public:
 	Measurement(TwistMeasurement z) {
 		twist = z;
 		type = TWIST;
+	}
+
+	Type getType(){
+		return type;
 	}
 
 	ros::Time getTime() {
@@ -263,6 +268,59 @@ public:
 		}
 	}
 
+	Eigen::MatrixXd getH() {
+		switch (type) {
+		case IMU:
+			return imu.H;
+			break;
+		case POSE:
+			return pose.H;
+			break;
+		case TWIST:
+			return twist.H;
+			break;
+		default:
+			ROS_FATAL("measurement type invalid");
+			return Eigen::MatrixXd();
+			break;
+		}
+	}
+
+};
+
+struct MeasurementCombination {
+	Eigen::MatrixXd z;
+	Eigen::MatrixXd Sigma;
+	Eigen::MatrixXd H;
+	ros::Time t;
+
+	/*
+	 * all measurements must be predicted or set to the same time as prediction
+	 */
+	MeasurementCombination(std::vector<Measurement> meas, State prediction){
+		int z_rows = 0;
+
+		for(auto e : meas)
+		{
+			ROS_ASSERT(e.getTime() == prediction.t);
+			z_rows += e.getZ().rows();
+		}
+
+		z.resize(z_rows, 1);
+		H.resize(z_rows, STATE_VECTOR_SIZE);
+		Sigma = Eigen::MatrixXd::Zero(z_rows, z_rows);
+
+		int i = 0;
+		for(auto e : meas)
+		{
+			z.block(i, 0, e.getZ().rows(), 1) = e.getZ();
+			H.block(i, 0, e.getH().rows(), STATE_VECTOR_SIZE) = e.getH();
+			Sigma.block(i, i, e.getSigma().rows(), e.getSigma().rows()) = e.getSigma();
+			i += e.getZ().rows();
+		}
+
+		t = prediction.t;
+	}
 };
 
 #endif /* M7_SENSOR_FUSION_INCLUDE_M7_SENSOR_FUSION_TYPES_H_ */

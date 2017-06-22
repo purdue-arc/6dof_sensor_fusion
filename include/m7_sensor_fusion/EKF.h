@@ -23,6 +23,8 @@
 #include <tf/tf.h>
 #include <tf/tfMessage.h>
 
+#include <float.h>
+
 #include "Parameters.h"
 #include "Types.h"
 
@@ -30,6 +32,8 @@ class EKF {
 public:
 
 	std::vector<State> old_states; // used for interpolating old measurements forward to be used
+
+	std::deque<Measurement> measurements;
 
 	State state;
 
@@ -46,17 +50,22 @@ public:
 
 	State process(State prior, ros::Time t);
 
-	State update(State prior, IMUMeasurement measurement);
+	State update(State prior, MeasurementCombination mats);
+	State update(State prior, Measurement meas);
 
-	Eigen::Matrix<double, 16, 16> computeStateTransitionJacobian(State est, double dt);
+	Eigen::Matrix<double, STATE_VECTOR_SIZE, STATE_VECTOR_SIZE> computeStateTransitionJacobian(State est, double dt);
 
-	Eigen::Matrix<double, 6, 16> computeIMUMeasurementJacobian(State est);
+	Eigen::Matrix<double, 6, STATE_VECTOR_SIZE> computeIMUMeasurementJacobian(State est);
 
-	Eigen::Matrix<double, 7, 16> computePOSEMeasurementJacobian(State est);
+	Eigen::Matrix<double, 7, STATE_VECTOR_SIZE> computePOSEMeasurementJacobian(State est);
 
-	Eigen::Matrix<double, 16, 16> computeStateProcessError(double dt);
+	Eigen::Matrix<double, STATE_VECTOR_SIZE, STATE_VECTOR_SIZE> computeStateProcessError(double dt);
 
-	Eigen::MatrixXd combineMeasurements(std::vector<Measurement> mats);
+	State findClosestState(ros::Time t);
+
+	Measurement predictMeasurementForward(Measurement z, ros::Time new_t);
+
+	void addMeasurement(Measurement z);
 
 
 };

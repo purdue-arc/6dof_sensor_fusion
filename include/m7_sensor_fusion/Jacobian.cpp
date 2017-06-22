@@ -7,7 +7,7 @@
 
 #include "EKF.h"
 
-Eigen::Matrix<double, 16, 16> EKF::computeStateTransitionJacobian(State state, double dt)
+Eigen::Matrix<double, STATE_VECTOR_SIZE, STATE_VECTOR_SIZE> EKF::computeStateTransitionJacobian(State state, double dt)
 {
 
 	double x = state.x();
@@ -33,45 +33,45 @@ Eigen::Matrix<double, 16, 16> EKF::computeStateTransitionJacobian(State state, d
 	double t2 = dt*dt;
 	double t3 = t2*(1.0/2.0);
 	double t4 = wx*wx;
-	double t5 = t2*t4;
-	double 	t6 = wy*wy;
-	double 	t7 = t2*t6;
-	double 	t8 = wz*wz;
-	double 	t9 = t2*t8;
-	double 	t10 = t5+t7+t9; // omega mag
-	double 	t11 = sqrt(t10);
-	double 	t12 = t11*(1.0/2.0);
-	double 	t13 = sin(t12);
-	double 	t14 = 1.0/sqrt(t10);
-	if(t10 == 0){
+	double  t5 = wy*wy;
+	double 	  t6 = wz*wz;
+	double 	  t7 = t4+t5+t6;
+	double 	  t8 = sqrt(t7);
+	double	  t9 = dt*t8*(1.0/2.0);
+	double 	  t10 = sin(t9);
+	double   t11 = 1.0/sqrt(t7);
+	if(t7 == 0)
+	{
+		t11 = 0;
+	}
+	double 	  t12 = 1.0/pow(t7,3.0/2.0);
+	if(t7 == 0)
+	{
+		t12 = 0;
+	}
+	double 	  t13 = cos(t9);
+	double 	  t14 = 1.0/t7;
+	if(t7 == 0)
+	{
 		t14 = 0;
 	}
-	double 	t15 = cos(t12);
-	double 	t16 = 1.0/t10;
-	if(t10 == 0){
-		t16 = 0;
-	}
-	double 	t17 = 1.0/pow(t10,3.0/2.0);
-	if(t10 == 0){
-		t17 = 0;
-	}
-	double 	t18 = q2*t2*t13*t17*wy*wz;
-	double 	t19 = q3*t2*t13*t17*wy*wz;
-	double 	t20 = t13*t14*wz;
-	double 	t21 = t13*t14*wx;
-	double 	t22 = q0*t2*t15*t16*wx*wy*(1.0/2.0);
-	double 	t23 = q1*t2*t13*t17*wx*wz;
-	double 	t24 = q0*t13*t14;
-	double 	t25 = q3*t2*t13*t17*wx*wy;
-	double 	t26 = q3*t2*t13*t17*wx*wz;
-	double 	t27 = t13*t14*wy;
-	double 	t28 = q2*t13*t14;
-	double 	t29 = q0*t2*t15*t16*wx*wz*(1.0/2.0);
-	double 	t30 = q1*t2*t13*t17*wx*wy;
-	double 	t31 = q0*t2*t15*t16*wy*wz*(1.0/2.0);
-	double 	t32 = q2*t2*t13*t17*wx*wy;
-	double 	t33 = q2*t2*t15*t16*wx*wz*(1.0/2.0);
-	double 	t34 = q1*t2*t13*t17*wy*wz;
+	double 	  t15 = q2*t10*t12*wy*wz;
+	double 	  t16 = q3*t10*t12*wy*wz;
+	double 	  t17 = t10*t11*wz;
+	double 	  t18 = t10*t11*wx;
+	double 	  t19 = q1*t10*t12*wx*wz;
+	double 	  t20 = dt*q0*t13*t14*wx*wy*(1.0/2.0);
+	double 	  t21 = q0*t10*t11;
+	double 	  t22 = q3*t10*t12*wx*wy;
+	double 	  t23 = q3*t10*t12*wx*wz;
+	double 	  t24 = t10*t11*wy;
+	double 	  t25 = q2*t10*t11;
+	double 	  t26 = q1*t10*t12*wx*wy;
+	double 	  t27 = dt*q0*t13*t14*wx*wz*(1.0/2.0);
+	double 	  t28 = q2*t10*t12*wx*wy;
+	double 	  t29 = dt*q0*t13*t14*wy*wz*(1.0/2.0);
+	double 	  t30 = q1*t10*t12*wy*wz;
+	double 	  t31 = dt*q2*t13*t14*wx*wz*(1.0/2.0);
 	A0[0][0] = 1.0;
 	A0[0][3] = dt;
 	A0[0][6] = t3;
@@ -90,40 +90,41 @@ Eigen::Matrix<double, 16, 16> EKF::computeStateTransitionJacobian(State state, d
 	A0[6][6] = 1.0;
 	A0[7][7] = 1.0;
 	A0[8][8] = 1.0;
-	A0[9][9] = t15;
-	A0[9][10] = -t13*t14*wx;
-	A0[9][11] = -t13*t14*wy;
-	A0[9][12] = -t13*t14*wz;
-	A0[9][13] = t26+t32-q1*t13*t14+q1*t2*t4*t13*t17-q1*t2*t4*t15*t16*(1.0/2.0)-q0*t2*t13*t14*wx*(1.0/2.0)-q2*t2*t15*t16*wx*wy*(1.0/2.0)-q3*t2*t15*t16*wx*wz*(1.0/2.0);
-	A0[9][14] = t19+t30-q2*t13*t14+q2*t2*t6*t13*t17-q2*t2*t6*t15*t16*(1.0/2.0)-q0*t2*t13*t14*wy*(1.0/2.0)-q1*t2*t15*t16*wx*wy*(1.0/2.0)-q3*t2*t15*t16*wy*wz*(1.0/2.0);
-	A0[9][15] = t18+t23-q3*t13*t14+q3*t2*t8*t13*t17-q3*t2*t8*t15*t16*(1.0/2.0)-q0*t2*t13*t14*wz*(1.0/2.0)-q1*t2*t15*t16*wx*wz*(1.0/2.0)-q2*t2*t15*t16*wy*wz*(1.0/2.0);
-	A0[10][9] = t21;
-	A0[10][10] = t15;
-	A0[10][11] = t20;
-	A0[10][12] = -t13*t14*wy;
-	A0[10][13] = t24+t25+t33-q0*t2*t4*t13*t17+q0*t2*t4*t15*t16*(1.0/2.0)-q1*t2*t13*t14*wx*(1.0/2.0)-q3*t2*t15*t16*wx*wy*(1.0/2.0)-q2*t2*t13*t17*wx*wz;
-	A0[10][14] = -t18+t22-q3*t13*t14+q3*t2*t6*t13*t17-q3*t2*t6*t15*t16*(1.0/2.0)-q1*t2*t13*t14*wy*(1.0/2.0)-q0*t2*t13*t17*wx*wy+q2*t2*t15*t16*wy*wz*(1.0/2.0);
-	A0[10][15] = t19+t28+t29-q2*t2*t8*t13*t17+q2*t2*t8*t15*t16*(1.0/2.0)-q1*t2*t13*t14*wz*(1.0/2.0)-q0*t2*t13*t17*wx*wz-q3*t2*t15*t16*wy*wz*(1.0/2.0);
-	A0[11][9] = t27;
-	A0[11][10] = -t20;
-	A0[11][11] = t15;
-	A0[11][12] = t21;
-	A0[11][13] = t22+t23+q3*t13*t14-q3*t2*t4*t13*t17+q3*t2*t4*t15*t16*(1.0/2.0)-q2*t2*t13*t14*wx*(1.0/2.0)-q0*t2*t13*t17*wx*wy-q1*t2*t15*t16*wx*wz*(1.0/2.0);
-	A0[11][14] = t24-t25+t34-q0*t2*t6*t13*t17+q0*t2*t6*t15*t16*(1.0/2.0)-q2*t2*t13*t14*wy*(1.0/2.0)+q3*t2*t15*t16*wx*wy*(1.0/2.0)-q1*t2*t15*t16*wy*wz*(1.0/2.0);
-	A0[11][15] = -t26+t31-q1*t13*t14+q1*t2*t8*t13*t17-q1*t2*t8*t15*t16*(1.0/2.0)-q2*t2*t13*t14*wz*(1.0/2.0)+q3*t2*t15*t16*wx*wz*(1.0/2.0)-q0*t2*t13*t17*wy*wz;
-	A0[12][9] = t20;
-	A0[12][10] = t27;
-	A0[12][11] = -t21;
-	A0[12][12] = t15;
-	A0[12][13] = -t28+t29-t30+q2*t2*t4*t13*t17-q2*t2*t4*t15*t16*(1.0/2.0)-q3*t2*t13*t14*wx*(1.0/2.0)+q1*t2*t15*t16*wx*wy*(1.0/2.0)-q0*t2*t13*t17*wx*wz;
-	A0[12][14] = t31+t32+q1*t13*t14-q1*t2*t6*t13*t17+q1*t2*t6*t15*t16*(1.0/2.0)-q3*t2*t13*t14*wy*(1.0/2.0)-q2*t2*t15*t16*wx*wy*(1.0/2.0)-q0*t2*t13*t17*wy*wz;
-	A0[12][15] = t24-t33-t34-q0*t2*t8*t13*t17+q0*t2*t8*t15*t16*(1.0/2.0)-q3*t2*t13*t14*wz*(1.0/2.0)+q2*t2*t13*t17*wx*wz+q1*t2*t15*t16*wy*wz*(1.0/2.0);
+	A0[9][9] = t13;
+	A0[9][10] = -t10*t11*wx;
+	A0[9][11] = -t10*t11*wy;
+	A0[9][12] = -t10*t11*wz;
+	A0[9][13] = t23+t28-q1*t10*t11+q1*t4*t10*t12-dt*q1*t4*t13*t14*(1.0/2.0)-dt*q0*t10*t11*wx*(1.0/2.0)-dt*q2*t13*t14*wx*wy*(1.0/2.0)-dt*q3*t13*t14*wx*wz*(1.0/2.0);
+	A0[9][14] = t16+t26-q2*t10*t11+q2*t5*t10*t12-dt*q2*t5*t13*t14*(1.0/2.0)-dt*q0*t10*t11*wy*(1.0/2.0)-dt*q1*t13*t14*wx*wy*(1.0/2.0)-dt*q3*t13*t14*wy*wz*(1.0/2.0);
+	A0[9][15] = t15+t19-q3*t10*t11+q3*t6*t10*t12-dt*q3*t6*t13*t14*(1.0/2.0)-dt*q0*t10*t11*wz*(1.0/2.0)-dt*q1*t13*t14*wx*wz*(1.0/2.0)-dt*q2*t13*t14*wy*wz*(1.0/2.0);
+	A0[10][9] = t18;
+	A0[10][10] = t13;
+	A0[10][11] = t17;
+	A0[10][12] = -t10*t11*wy;
+	A0[10][13] = t21+t22+t31-q0*t4*t10*t12+dt*q0*t4*t13*t14*(1.0/2.0)-dt*q1*t10*t11*wx*(1.0/2.0)-q2*t10*t12*wx*wz-dt*q3*t13*t14*wx*wy*(1.0/2.0);
+	A0[10][14] = -t15+t20-q3*t10*t11+q3*t5*t10*t12-dt*q3*t5*t13*t14*(1.0/2.0)-dt*q1*t10*t11*wy*(1.0/2.0)-q0*t10*t12*wx*wy+dt*q2*t13*t14*wy*wz*(1.0/2.0);
+	A0[10][15] = t16+t25+t27-q2*t6*t10*t12+dt*q2*t6*t13*t14*(1.0/2.0)-dt*q1*t10*t11*wz*(1.0/2.0)-q0*t10*t12*wx*wz-dt*q3*t13*t14*wy*wz*(1.0/2.0);
+	A0[11][9] = t24;
+	A0[11][10] = -t17;
+	A0[11][11] = t13;
+	A0[11][12] = t18;
+	A0[11][13] = t19+t20+q3*t10*t11-q3*t4*t10*t12+dt*q3*t4*t13*t14*(1.0/2.0)-dt*q2*t10*t11*wx*(1.0/2.0)-q0*t10*t12*wx*wy-dt*q1*t13*t14*wx*wz*(1.0/2.0);
+	A0[11][14] = t21-t22+t30-q0*t5*t10*t12+dt*q0*t5*t13*t14*(1.0/2.0)-dt*q2*t10*t11*wy*(1.0/2.0)+dt*q3*t13*t14*wx*wy*(1.0/2.0)-dt*q1*t13*t14*wy*wz*(1.0/2.0);
+	A0[11][15] = -t23+t29-q1*t10*t11+q1*t6*t10*t12-dt*q1*t6*t13*t14*(1.0/2.0)-dt*q2*t10*t11*wz*(1.0/2.0)-q0*t10*t12*wy*wz+dt*q3*t13*t14*wx*wz*(1.0/2.0);
+	A0[12][9] = t17;
+	A0[12][10] = t24;
+	A0[12][11] = -t18;
+	A0[12][12] = t13;
+	A0[12][13] = -t25-t26+t27+q2*t4*t10*t12-dt*q2*t4*t13*t14*(1.0/2.0)-dt*q3*t10*t11*wx*(1.0/2.0)-q0*t10*t12*wx*wz+dt*q1*t13*t14*wx*wy*(1.0/2.0);
+	A0[12][14] = t28+t29+q1*t10*t11-q1*t5*t10*t12+dt*q1*t5*t13*t14*(1.0/2.0)-dt*q3*t10*t11*wy*(1.0/2.0)-q0*t10*t12*wy*wz-dt*q2*t13*t14*wx*wy*(1.0/2.0);
+	A0[12][15] = t21-t30-t31-q0*t6*t10*t12+dt*q0*t6*t13*t14*(1.0/2.0)-dt*q3*t10*t11*wz*(1.0/2.0)+q2*t10*t12*wx*wz+dt*q1*t13*t14*wy*wz*(1.0/2.0);
 	A0[13][13] = 1.0;
 	A0[14][14] = 1.0;
 	A0[15][15] = 1.0;
 
 
-	Eigen::Matrix<double, 16, 16> F;
+
+	Eigen::Matrix<double, STATE_VECTOR_SIZE, STATE_VECTOR_SIZE> F;
 
 	for(int i = 0; i < 16; i++)
 	{
@@ -138,7 +139,7 @@ Eigen::Matrix<double, 16, 16> EKF::computeStateTransitionJacobian(State state, d
 }
 
 
-Eigen::Matrix<double, 6, 16> EKF::computeIMUMeasurementJacobian(State est)
+Eigen::Matrix<double, 6, STATE_VECTOR_SIZE> EKF::computeIMUMeasurementJacobian(State est)
 {
 
 	double ax = state.ax();
@@ -195,7 +196,7 @@ Eigen::Matrix<double, 6, 16> EKF::computeIMUMeasurementJacobian(State est)
 	A0[5][15] = 1.0;
 
 
-	Eigen::Matrix<double, 6, 16> H;
+	Eigen::Matrix<double, 6, STATE_VECTOR_SIZE> H;
 
 	for(int i = 0; i < 6; i++)
 	{

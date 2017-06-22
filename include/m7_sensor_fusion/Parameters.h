@@ -13,6 +13,9 @@
 #define BASE_FRAME "base_link"
 #define IMU_FRAME "imu_frame"
 
+#define STATE_VECTOR_SIZE 16
+#define MAX_ROWS 19
+
 #define INITIAL_POS_SIGMA 10000
 #define INITIAL_VEL_SIGMA 10
 #define INITIAL_ACCEL_SIGMA 10

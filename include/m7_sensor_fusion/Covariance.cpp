@@ -7,9 +7,9 @@
 
 #include "EKF.h"
 
-Eigen::Matrix<double, 16, 16> EKF::computeStateProcessError(double dt)
+Eigen::Matrix<double, STATE_VECTOR_SIZE, STATE_VECTOR_SIZE> EKF::computeStateProcessError(double dt)
 {
-	Eigen::Matrix<double, 16, 16> Q = Eigen::MatrixXd::Identity(16, 16);
+	Eigen::Matrix<double, STATE_VECTOR_SIZE, STATE_VECTOR_SIZE> Q = Eigen::MatrixXd::Identity(STATE_VECTOR_SIZE, STATE_VECTOR_SIZE);
 
 	Q(0, 0) = POS_PROCESS_SIGMA * dt;
 	Q(1, 1) = POS_PROCESS_SIGMA * dt;

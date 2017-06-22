@@ -97,7 +97,57 @@ State EKF::process(State prior, ros::Time t)
 
 }
 
-State EKF::update(State prior, IMUMeasurement measurement)
+State EKF::update(State prior, MeasurementCombination mats)
 {
+	//Eigen::Matrix<double, mats.z.rows(), 1> = mats.z - mats
+}
+
+
+State EKF::findClosestState(ros::Time t)
+{
+	double refT = t.toSec();
+	bool decreasing = true;
+	double lowestDelta = fabs(this->state.t.toSec() - refT);
+	State bestState = this->state;
+
+	for(std::vector<State>::iterator it = old_states.end() - 1; it != old_states.begin()-1; it--)
+	{
+		double thisDelta = fabs(it->t.toSec() - refT);
+
+		if(thisDelta < lowestDelta)
+		{
+			lowestDelta = thisDelta;
+			bestState = (*it);
+		}
+		else
+		{
+			ROS_DEBUG_STREAM("lowest delta_t abs: " << lowestDelta << " best state t: " << bestState.t.toSec() << " reference t: " << refT);
+			break;
+		}
+	}
+
+	return bestState;
+}
+
+Measurement EKF::predictMeasurementForward(Measurement z, ros::Time new_t){
 
 }
+
+void EKF::addMeasurement(Measurement z){
+	bool pass = false;
+	while(!pass)
+	{
+		pass = true;
+		for(std::deque<Measurement>::iterator it = this->measurements.begin(); it != this->measurements.end(); it++)
+		{
+			if(it->getType() == z.getType())
+			{
+				pass = false;
+				ROS_DEBUG_STREAM("erasing measurement size before: " << this->measurements.size());
+				this->measurements.erase(it);
+				ROS_DEBUG_STREAM("after size: " << this->measurements.size());
+			}
+		}
+	}
+}
+
