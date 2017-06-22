@@ -13,6 +13,10 @@
 #define BASE_FRAME "base_link"
 #define IMU_FRAME "imu_frame"
 
+#define MANTIS_TOPIC "mantis/pose_estimate"
+#define IMU_TOPIC "imu/measurements"
+#define DIPA_TOPIC "dipa/twist_estimate"
+
 // rate in hz which the state will be published at
 #define STATE_PUBLISH_RATE 100
 

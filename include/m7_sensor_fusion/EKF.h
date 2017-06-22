@@ -44,9 +44,9 @@ public:
 	EKF(bool test = false);
 	virtual ~EKF();
 
-	void imu_callback(sensor_msgs::ImuConstPtr& msg);
-	void mantis_callback(geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
-	void dipa_callback(geometry_msgs::TwistWithCovarianceStampedConstPtr& msg);
+	void imu_callback(const sensor_msgs::ImuConstPtr& msg);
+	void mantis_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
+	void dipa_callback(const geometry_msgs::TwistWithCovarianceStampedConstPtr& msg);
 
 	State process(State prior, ros::Time t);
 

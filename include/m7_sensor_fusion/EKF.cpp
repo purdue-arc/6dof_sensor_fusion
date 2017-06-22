@@ -30,6 +30,13 @@ EKF::EKF(bool test) {
 		return;
 	}
 
+	// set up subs
+	ros::Subscriber imu_sub, mantis_sub, dipa_sub;
+
+	imu_sub = nh.subscribe<sensor_msgs::Imu>(IMU_TOPIC, 100, &EKF::imu_callback, this);
+	mantis_sub = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>(MANTIS_TOPIC, 2, &EKF::mantis_callback, this);
+	dipa_sub = nh.subscribe<geometry_msgs::TwistWithCovarianceStamped>(DIPA_TOPIC, 10, &EKF::dipa_callback, this);
+
 	if(!test)
 	{
 		ros::spin();
@@ -40,19 +47,93 @@ EKF::~EKF() {
 	// TODO Auto-generated destructor stub
 }
 
-void EKF::imu_callback(sensor_msgs::ImuConstPtr& msg)
+void EKF::imu_callback(const sensor_msgs::ImuConstPtr& msg)
 {
+	IMUMeasurement z;
+
+	z.t = msg->header.stamp;
+
+	//transform the measurements into the body frame
+	tf::Vector3 accel, omega;
+
+	accel = tf::Vector3(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
+	omega = tf::Vector3(msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
+
+	tf::Vector3 accel_b, omega_b;
+
+	accel_b = this->base2imu * accel - this->base2imu * tf::Vector3(0, 0, 0);
+	omega_b = this->base2imu * omega - this->base2imu * tf::Vector3(0, 0, 0);
+
+	z.z << accel_b.x(), accel_b.y(), accel_b.z(), omega_b.x(), omega_b.y(), omega_b.z();
+
+	Eigen::Matrix<double, 6, 6> sig = Eigen::MatrixXd::Zero(6, 6);
+	sig(0, 0) = msg->linear_acceleration_covariance.at(0);
+	sig(1, 1) = msg->linear_acceleration_covariance.at(4);
+	sig(2, 2) = msg->linear_acceleration_covariance.at(8);
+	sig(3, 3) = msg->angular_velocity_covariance.at(0);
+	sig(4, 4) = msg->angular_velocity_covariance.at(4);
+	sig(5, 5) = msg->angular_velocity_covariance.at(8);
+
+	z.Sigma = sig;
+
+	// average imu_msgs if there is another
+	for(auto e : this->measurements)
+	{
+		if(e.getType() == Measurement::IMU)
+		{
+			ROS_DEBUG_STREAM("averaging imu reading. z before: " << z.z);
+			z.z = 0.5 * (z.z + e.getZ());
+			ROS_DEBUG_STREAM("z after: " << z.z);
+		}
+	}
+
+	this->addMeasurement(z);
 
 }
 
-void EKF::mantis_callback(geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
+void EKF::mantis_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
 {
+	PoseMeasurement z;
 
+	z.t = msg->header.stamp;
+
+	z.z << msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z, msg->pose.pose.orientation.w, msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z;
+
+	z.Sigma = Eigen::MatrixXd::Zero(7, 7);
+
+	z.Sigma(0, 0) = msg->pose.covariance.at(0*6 + 0);//xx
+	z.Sigma(1, 1) = msg->pose.covariance.at(1*6 + 1);//yy
+	z.Sigma(2, 2) = msg->pose.covariance.at(2*6 + 2);//zz
+
+	z.Sigma(4, 4) = msg->pose.covariance.at(3*6 + 3);//q1q1
+	z.Sigma(5, 5) = msg->pose.covariance.at(4*6 + 4);//q2q2
+	z.Sigma(6, 6) = msg->pose.covariance.at(5*6 + 5);//q3q3
+
+	z.Sigma(3, 3) = (z.Sigma(6, 6)+z.Sigma(5, 5)+z.Sigma(4, 4)) / 3.0;//q0q0
+
+	this->addMeasurement(z);
 }
 
-void EKF::dipa_callback(geometry_msgs::TwistWithCovarianceStampedConstPtr& msg)
+void EKF::dipa_callback(const geometry_msgs::TwistWithCovarianceStampedConstPtr& msg)
 {
+	TwistMeasurement z;
 
+	z.t = msg->header.stamp;
+
+	z.z << msg->twist.twist.linear.x, msg->twist.twist.linear.y, msg->twist.twist.linear.z, msg->twist.twist.angular.x, msg->twist.twist.angular.y, msg->twist.twist.angular.z;
+
+	z.Sigma = Eigen::MatrixXd::Zero(6, 6);
+
+	z.Sigma(0, 0) = msg->twist.covariance.at(0*6 + 0);//xx
+	z.Sigma(1, 1) = msg->twist.covariance.at(1*6 + 1);//yy
+	z.Sigma(2, 2) = msg->twist.covariance.at(2*6 + 2);//zz
+
+	z.Sigma(3, 3) = msg->twist.covariance.at(3*6 + 3);//wxwx
+	z.Sigma(4, 4) = msg->twist.covariance.at(4*6 + 4);//wywy
+	z.Sigma(5, 5) = msg->twist.covariance.at(5*6 + 5);//wzwz
+
+
+	this->addMeasurement(z);
 }
 
 State EKF::process(State prior, ros::Time t)
@@ -262,5 +343,10 @@ void EKF::addMeasurement(Measurement z){
 			}
 		}
 	}
+
+	this->measurements.push_back(z);
+
+	ROS_DEBUG_STREAM("ADDED MEASUREMENT TYPE: " << z.getType() <<"\nz: " << z.getZ().transpose() <<"\nsigma: " << z.getSigma() << "\nt: " << z.getTime() << "\nH: " << z.getH());
+
 }
 
