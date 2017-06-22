@@ -13,6 +13,7 @@
 
 #include <sensor_msgs/Imu.h>
 #include <geometry_msgs/TwistWithCovarianceStamped.h>
+#include <geometry_msgs/AccelWithCovarianceStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 #include <tf2_ros/transform_broadcaster.h>

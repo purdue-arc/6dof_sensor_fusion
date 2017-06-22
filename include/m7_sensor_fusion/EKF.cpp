@@ -37,9 +37,23 @@ EKF::EKF(bool test) {
 	mantis_sub = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>(MANTIS_TOPIC, 2, &EKF::mantis_callback, this);
 	dipa_sub = nh.subscribe<geometry_msgs::TwistWithCovarianceStamped>(DIPA_TOPIC, 10, &EKF::dipa_callback, this);
 
+	// set up pubs
+	ros::Publisher pose_pub, twist_pub, accel_pub;
+
+	pose_pub = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>(POSE_PUB_TOPIC, 1);
+	twist_pub = nh.advertise<geometry_msgs::TwistWithCovarianceStamped>(TWIST_PUB_TOPIC, 1);
+	accel_pub = nh.advertise<geometry_msgs::AccelWithCovarianceStamped>(ACCEL_PUB_TOPIC, 1);
+
+	// run the filter
 	if(!test)
 	{
-		ros::spin();
+		ros::Rate loop_rate(STATE_PUBLISH_RATE);
+
+		while(ros::ok())
+		{
+			ros::spinOnce();
+			//TODO run the update and process functions
+		}
 	}
 }
 

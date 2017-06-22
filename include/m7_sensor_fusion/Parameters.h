@@ -17,6 +17,10 @@
 #define IMU_TOPIC "imu/measurements"
 #define DIPA_TOPIC "dipa/twist_estimate"
 
+#define POSE_PUB_TOPIC "state/pose"
+#define TWIST_PUB_TOPIC "state/twist"
+#define ACCEL_PUB_TOPIC "state/accel"
+
 // rate in hz which the state will be published at
 #define STATE_PUBLISH_RATE 100
 
