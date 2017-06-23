@@ -150,7 +150,9 @@ Eigen::Matrix<double, 6, STATE_VECTOR_SIZE> EKF::computeIMUMeasurementJacobian(S
 	double q2 = state.q2();
 	double q3 = state.q3();
 
-	double t2 = G+az;
+	double gravity = -G;
+
+	double t2 = gravity+az;
 	double t3 = q0*q3*2.0;
 	double t4 = q1*q2*2.0;
 	double t5 = q3*q3;
