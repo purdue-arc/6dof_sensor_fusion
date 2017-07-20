@@ -52,7 +52,11 @@ EKF::EKF(bool test) {
 		while(ros::ok())
 		{
 			ros::spinOnce();
-			//TODO run the update and process functions
+			//TODO set the start time if ros::Time(0) = the state's time
+			//TODO only start predicting and fusing when their is a odometry estimate
+			this->state = this->process(this->state, ros::Time::now());
+			MeasurementCombination mc = MeasurementCombination(this->measurements, this->state);
+			this->state = this->update(this->state, mc);
 		}
 	}
 }
