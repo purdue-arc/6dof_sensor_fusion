@@ -23,15 +23,14 @@ struct State {
 		vec(6) = 0.0;
 		vec(7) = 0.0;
 		vec(8) = 0.0;
-		vec(9) = 1.0; // q0 = 1.0
+		vec(9) = 0.0;
 		vec(10) = 0.0;
 		vec(11) = 0.0;
 		vec(12) = 0.0;
 		vec(13) = 0.0;
 		vec(14) = 0.0;
-		vec(15) = 0.0;
 
-		Sigma = Eigen::MatrixXd::Identity(16, 16);
+		Sigma = Eigen::MatrixXd::Identity(STATE_VECTOR_SIZE, STATE_VECTOR_SIZE);
 		Sigma(0, 0) = INITIAL_POS_SIGMA;
 		Sigma(1, 1) = INITIAL_POS_SIGMA;
 		Sigma(2, 2) = INITIAL_POS_SIGMA;
@@ -44,14 +43,13 @@ struct State {
 		Sigma(7, 7) = INITIAL_ACCEL_SIGMA;
 		Sigma(8, 8) = INITIAL_ACCEL_SIGMA;
 
-		Sigma(9, 9) = INITIAL_QUAT_SIGMA;
-		Sigma(10, 10) = INITIAL_QUAT_SIGMA;
-		Sigma(11, 11) = INITIAL_QUAT_SIGMA;
-		Sigma(12, 12) = INITIAL_QUAT_SIGMA;
+		Sigma(9, 9) = INITIAL_THETA_SIGMA;
+		Sigma(10, 10) = INITIAL_THETA_SIGMA;
+		Sigma(11, 11) = INITIAL_THETA_SIGMA;
 
+		Sigma(12, 12) = INITIAL_OMEGA_SIGMA;
 		Sigma(13, 13) = INITIAL_OMEGA_SIGMA;
 		Sigma(14, 14) = INITIAL_OMEGA_SIGMA;
-		Sigma(15, 15) = INITIAL_OMEGA_SIGMA;
 
 		t = ros::Time(0);
 	}
@@ -83,26 +81,23 @@ struct State {
 	double az() {
 		return vec(8);
 	}
-	double q0() {
+	double thetax() {
 		return vec(9);
 	}
-	double q1() {
+	double thetay() {
 		return vec(10);
 	}
-	double q2() {
+	double thetaz() {
 		return vec(11);
 	}
-	double q3() {
+	double wx() {
 		return vec(12);
 	}
-	double wx() {
+	double wy() {
 		return vec(13);
 	}
-	double wy() {
-		return vec(14);
-	}
 	double wz() {
-		return vec(15);
+		return vec(14);
 	}
 
 	Eigen::Vector3d getPos() {
@@ -117,13 +112,18 @@ struct State {
 		return Eigen::Vector3d(ax(), ay(), az());
 	}
 
+	Eigen::Vector3d getTheta(){
+		return Eigen::Vector3d(thetax(), thetay(), thetaz());
+	}
+
 	Eigen::Vector3d getOmega() {
 		return Eigen::Vector3d(wx(), wy(), wz());
 	}
 
-	Eigen::Quaterniond getQuaternion() {
+
+	/*Eigen::Quaterniond getQuaternion() {
 		return Eigen::Quaterniond(q0(), q1(), q2(), q3());
-	}
+	}*/
 
 	void setPos(Eigen::Vector3d in) {
 		vec(0) = in(0);
@@ -144,32 +144,39 @@ struct State {
 	}
 
 	void setOmega(Eigen::Vector3d in) {
-		vec(13) = in(0);
-		vec(14) = in(1);
-		vec(15) = in(2);
+		vec(12) = in(0);
+		vec(13) = in(1);
+		vec(14) = in(2);
 	}
 
-	void setQuat(Eigen::Quaterniond in) {
+	void setTheta(Eigen::Vector3d in)
+	{
+		vec(9) = in(0);
+		vec(10) = in(1);
+		vec(11) = in(2);
+	}
+
+	/*void setQuat(Eigen::Quaterniond in) {
 		vec(9) = in.w();
 		vec(10) = in.x();
 		vec(11) = in.y();
 		vec(12) = in.z();
-	}
+	}*/
 
 };
 
 struct IMUMeasurement {
-	Eigen::Matrix<double, 6, 1> z; // ax, ay, az, wx, wy, wz
-	Eigen::Matrix<double, 6, 6> Sigma;
+	Eigen::Matrix<double, 5, 1> z; // ax, ay, az, wx, wy, wz
+	Eigen::Matrix<double, 5, 5> Sigma;
 	ros::Time t;
-	Eigen::Matrix<double, 6, STATE_VECTOR_SIZE> H;
+	Eigen::Matrix<double, 5, STATE_VECTOR_SIZE> H;
 };
 
 struct PoseMeasurement {
-	Eigen::Matrix<double, 7, 1> z; // x, y, z, q0, q1, q2, q3
-	Eigen::Matrix<double, 7, 7> Sigma;
+	Eigen::Matrix<double, 6, 1> z; // x, y, z, thetax, thetay, thetaz
+	Eigen::Matrix<double, 6, 6> Sigma;
 	ros::Time t;
-	Eigen::Matrix<double, 7, STATE_VECTOR_SIZE> H;
+	Eigen::Matrix<double, 6, STATE_VECTOR_SIZE> H;
 };
 
 struct TwistMeasurement {

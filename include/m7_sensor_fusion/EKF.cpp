@@ -57,12 +57,37 @@ EKF::EKF(bool test) {
 			this->state = this->process(this->state, ros::Time::now());
 			MeasurementCombination mc = MeasurementCombination(this->measurements, this->state);
 			this->state = this->update(this->state, mc);
+
+			loop_rate.sleep(); // sleep until the next time we should predict and update
 		}
 	}
 }
 
 EKF::~EKF() {
 	// TODO Auto-generated destructor stub
+}
+
+double EKF::constrainAngle(double angle)
+{
+	double new_angle = angle;
+	bool pass = false;
+	while(!pass)
+	{
+		if(new_angle < -PI)
+		{
+			new_angle += 2*PI;
+		}
+		else if(new_angle >= PI)
+		{
+			new_angle -= 2*PI;
+		}
+		else
+		{
+			pass = true;
+		}
+	}
+	return new_angle;
+
 }
 
 void EKF::imu_callback(const sensor_msgs::ImuConstPtr& msg)
@@ -115,19 +140,30 @@ void EKF::mantis_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr
 
 	z.t = msg->header.stamp;
 
-	z.z << msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z, msg->pose.pose.orientation.w, msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z;
+	double r, p, y;
 
-	z.Sigma = Eigen::MatrixXd::Zero(7, 7);
+	tf::Quaternion quat;
+	quat.setValue(msg->pose.pose.orientation.w, msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z);
+	tf::Matrix3x3 mat3 = tf::Matrix3x3(quat);
+	mat3.getRPY(r, p, y);
+
+	r = this->constrainAngle(r);
+	p = this->constrainAngle(p);
+	y = this->constrainAngle(y);
+
+	z.z << msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z, r, p, y;
+
+	z.Sigma = Eigen::MatrixXd::Zero(6, 6);
 
 	z.Sigma(0, 0) = msg->pose.covariance.at(0*6 + 0);//xx
 	z.Sigma(1, 1) = msg->pose.covariance.at(1*6 + 1);//yy
 	z.Sigma(2, 2) = msg->pose.covariance.at(2*6 + 2);//zz
 
-	z.Sigma(4, 4) = msg->pose.covariance.at(3*6 + 3);//q1q1
-	z.Sigma(5, 5) = msg->pose.covariance.at(4*6 + 4);//q2q2
-	z.Sigma(6, 6) = msg->pose.covariance.at(5*6 + 5);//q3q3
+	z.Sigma(3, 3) = msg->pose.covariance.at(3*6 + 3);//thetax
+	z.Sigma(4, 4) = msg->pose.covariance.at(4*6 + 4);//thetay
+	z.Sigma(5, 5) = msg->pose.covariance.at(5*6 + 5);//thetaz
 
-	z.Sigma(3, 3) = (z.Sigma(6, 6)+z.Sigma(5, 5)+z.Sigma(4, 4)) / 3.0;//q0q0
+	//z.Sigma(3, 3) = (z.Sigma(6, 6)+z.Sigma(5, 5)+z.Sigma(4, 4)) / 3.0;//q0q0
 
 	this->addMeasurement(z);
 }
@@ -168,23 +204,9 @@ State EKF::process(State prior, ros::Time t)
 
 	posterior.setAccel(prior.getAccel());
 
-	double theta = prior.getOmega().norm() * dt;
+	posterior.setTheta(prior.getTheta() + prior.getOmega() * dt);
 
-	Eigen::Vector3d omega_hat = prior.getOmega() / (theta/dt);
-
-	Eigen::Quaterniond dq;
-
-	if(theta == 0)
-	{
-		dq = Eigen::Quaterniond(1, 0, 0, 0);
-	}
-	else
-	{
-		double st2 = sin(theta/2.0);
-		dq = Eigen::Quaterniond(cos(theta/2.0), omega_hat.x()*st2, omega_hat.y()*st2, omega_hat.z()*st2);
-	}
-
-	posterior.setQuat(prior.getQuaternion() * dq);
+	//TODO constrain the theta
 
 	posterior.setOmega(prior.getOmega());
 
@@ -273,7 +295,7 @@ Measurement EKF::predictMeasurementForward(Measurement z, ros::Time new_t){
 
 		reference.setPos(Eigen::Vector3d(z.getZ()(0), z.getZ()(1), z.getZ()(2)));
 
-		reference.setQuat(Eigen::Quaterniond(z.getZ()(3), z.getZ()(4), z.getZ()(5), z.getZ()(6)));
+		reference.setTheta(Eigen::Vector3d(z.getZ()(3), z.getZ()(4), z.getZ()(5)));
 
 		reference = this->process(reference, reference.t + ros::Duration(dt));
 
@@ -285,10 +307,9 @@ Measurement EKF::predictMeasurementForward(Measurement z, ros::Time new_t){
 		posez.z(0) = reference.x();
 		posez.z(1) = reference.y();
 		posez.z(2) = reference.z();
-		posez.z(3) = reference.q0();
-		posez.z(4) = reference.q1();
-		posez.z(5) = reference.q2();
-		posez.z(6) = reference.q3();
+		posez.z(3) = reference.thetax();
+		posez.z(4) = reference.thetay();
+		posez.z(5) = reference.thetaz();
 
 		Eigen::Matrix<double, 7, 7> R;
 		R(0, 0) = dt*1;
@@ -297,7 +318,6 @@ Measurement EKF::predictMeasurementForward(Measurement z, ros::Time new_t){
 		R(3, 3) = dt*1;
 		R(4, 4) = dt*1;
 		R(5, 5) = dt*1;
-		R(6, 6) = dt*1;
 
 		posez.Sigma = z.getSigma() + R;
 

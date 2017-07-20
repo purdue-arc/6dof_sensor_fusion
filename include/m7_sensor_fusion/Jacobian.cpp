@@ -7,7 +7,30 @@
 
 #include "EKF.h"
 
-Eigen::Matrix<double, STATE_VECTOR_SIZE, STATE_VECTOR_SIZE> EKF::computeStateTransitionJacobian(State state, double dt)
+Eigen::Matrix<double, STATE_VECTOR_SIZE, STATE_VECTOR_SIZE> EKF::computeStateTransitionF(double dt){
+	Eigen::Matrix<double, STATE_VECTOR_SIZE, STATE_VECTOR_SIZE> F;
+	F.setIdentity();
+
+	F(0, 3) = dt;
+	F(1, 4) = dt;
+	F(2, 5) = dt;
+	F(0, 6) = 0.5*dt*dt;
+	F(1, 7) = 0.5*dt*dt;
+	F(2, 8) = 0.5*dt*dt;
+
+	F(3, 6) = dt;
+	F(4, 7) = dt;
+	F(5, 8) = dt;
+
+	F(9, 12) = dt;
+	F(10, 13) = dt;
+	F(11, 14) = dt;
+
+	ROS_DEBUG_STREAM("F: " << F);
+
+	return F;
+}
+/*Eigen::Matrix<double, STATE_VECTOR_SIZE, STATE_VECTOR_SIZE> EKF::computeStateTransitionJacobian(State state, double dt)
 {
 
 	double x = state.x();
@@ -136,10 +159,23 @@ Eigen::Matrix<double, STATE_VECTOR_SIZE, STATE_VECTOR_SIZE> EKF::computeStateTra
 
 	return F;
 
+}*/
+
+Eigen::Matrix<double, 5, STATE_VECTOR_SIZE> EKF::computeIMUMeasurementH()
+{
+	Eigen::Matrix<double, 5, STATE_VECTOR_SIZE> H;
+	H.setZero();
+
+	H(0, 9) = 1.0; //roll
+	H(1, 10) = 1.0; // pitch
+	H(2, 12) = 1.0; // wx
+	H(3, 13) = 1.0; // wx
+	H(4, 14) = 1.0; // wx
+
+	return H;
 }
 
-
-Eigen::Matrix<double, 6, STATE_VECTOR_SIZE> EKF::computeIMUMeasurementJacobian(State est)
+/*Eigen::Matrix<double, 6, STATE_VECTOR_SIZE> EKF::computeIMUMeasurementJacobian(State est)
 {
 
 	double ax = state.ax();
@@ -210,6 +246,6 @@ Eigen::Matrix<double, 6, STATE_VECTOR_SIZE> EKF::computeIMUMeasurementJacobian(S
 
 	return H;
 
-}
+}*/
 
 

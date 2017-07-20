@@ -54,11 +54,12 @@ public:
 	State update(State prior, MeasurementCombination mats);
 	State update(State prior, Measurement meas);
 
-	Eigen::Matrix<double, STATE_VECTOR_SIZE, STATE_VECTOR_SIZE> computeStateTransitionJacobian(State est, double dt);
+	Eigen::Matrix<double, STATE_VECTOR_SIZE, STATE_VECTOR_SIZE> computeStateTransitionF(double dt);
 
-	Eigen::Matrix<double, 6, STATE_VECTOR_SIZE> computeIMUMeasurementJacobian(State est);
+	//Eigen::Matrix<double, 6, STATE_VECTOR_SIZE> computeIMUMeasurementJacobian(State est);
+	Eigen::Matrix<double, 5, STATE_VECTOR_SIZE> computeIMUMeasurementH();
 
-	Eigen::Matrix<double, 7, STATE_VECTOR_SIZE> computePOSEMeasurementJacobian(State est);
+	//Eigen::Matrix<double, 7, STATE_VECTOR_SIZE> computePOSEMeasurementJacobian(State est);
 
 	Eigen::Matrix<double, STATE_VECTOR_SIZE, STATE_VECTOR_SIZE> computeStateProcessError(double dt);
 
@@ -68,6 +69,7 @@ public:
 
 	void addMeasurement(Measurement z);
 
+	double constrainAngle(double angle);
 
 };
 
