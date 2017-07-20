@@ -13,6 +13,8 @@
 #define BASE_FRAME "base_link"
 #define IMU_FRAME "imu_frame"
 
+#define REMOVE_SIMILAR_MEASUREMENTS false
+
 #define MANTIS_TOPIC "mantis/pose_estimate"
 #define IMU_TOPIC "imu/measurements"
 #define DIPA_TOPIC "dipa/twist_estimate"
