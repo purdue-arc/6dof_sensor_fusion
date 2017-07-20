@@ -342,6 +342,7 @@ Measurement EKF::predictMeasurementForward(Measurement z, ros::Time new_t){
 }
 
 void EKF::addMeasurement(Measurement z){
+#if REMOVE_SIMILAR_MEASUREMENTS
 	bool pass = false;
 	while(!pass)
 	{
@@ -357,6 +358,7 @@ void EKF::addMeasurement(Measurement z){
 			}
 		}
 	}
+#endif
 
 	this->measurements.push_back(z);
 
