@@ -23,9 +23,9 @@ Eigen::Matrix<double, STATE_VECTOR_SIZE, STATE_VECTOR_SIZE> EKF::computeStatePro
 	Q(9, 9) = THETA_PROCESS_SIGMA * dt;
 	Q(10, 10) = THETA_PROCESS_SIGMA * dt;
 	Q(11, 11) = THETA_PROCESS_SIGMA * dt;
+	Q(12, 12) = OMEGA_PROCESS_SIGMA * dt;
 	Q(13, 13) = OMEGA_PROCESS_SIGMA * dt;
 	Q(14, 14) = OMEGA_PROCESS_SIGMA * dt;
-	Q(15, 15) = OMEGA_PROCESS_SIGMA * dt;
 
 	return Q;
 

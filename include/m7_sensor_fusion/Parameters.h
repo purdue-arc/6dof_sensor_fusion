@@ -41,6 +41,20 @@
 #define THETA_PROCESS_SIGMA 0.5
 #define OMEGA_PROCESS_SIGMA 0.02
 
+#define POSE_PREDICT_SIGMA 3.0
+#define TWIST_PREDICT_SIGMA 0.5
+
+#define AZ_BIAS 0.45
+#define AY_BIAS -0.1
+#define AX_BIAS 0.1
+
+//-1.7 d/s
+#define WX_BIAS -0.0296705973
+// -1.4 d/s
+#define WY_BIAS -0.0244346095
+// 1.7 d/s
+#define WZ_BIAS 0.0296706
+
 
 #define G 9.815
 #define PI 3.14159265359

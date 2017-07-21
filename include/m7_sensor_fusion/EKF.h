@@ -16,6 +16,8 @@
 #include <geometry_msgs/AccelWithCovarianceStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 
+#include <nav_msgs/Odometry.h>
+
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/message_filter.h>
 #include <tf2_ros/transform_listener.h>
@@ -47,7 +49,7 @@ public:
 
 	void imu_callback(const sensor_msgs::ImuConstPtr& msg);
 	void mantis_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
-	void dipa_callback(const geometry_msgs::TwistWithCovarianceStampedConstPtr& msg);
+	void dipa_callback(const nav_msgs::OdometryConstPtr& msg);
 
 	State process(State prior, ros::Time t);
 
@@ -60,6 +62,9 @@ public:
 	Eigen::Matrix<double, 5, STATE_VECTOR_SIZE> computeIMUMeasurementH();
 
 	//Eigen::Matrix<double, 7, STATE_VECTOR_SIZE> computePOSEMeasurementJacobian(State est);
+	Eigen::Matrix<double, 6, STATE_VECTOR_SIZE> computePoseMeasurementH();
+
+	Eigen::Matrix<double, 6, STATE_VECTOR_SIZE> computeTwistMeasurementH();
 
 	Eigen::Matrix<double, STATE_VECTOR_SIZE, STATE_VECTOR_SIZE> computeStateProcessError(double dt);
 

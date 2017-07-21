@@ -15,10 +15,10 @@ int main(int argc, char **argv)
 
 	EKF ekf(true);
 
-	ROS_DEBUG_STREAM("STATE JACO1: " << ekf.computeStateTransitionJacobian(ekf.state, 0.1));
+	ROS_DEBUG_STREAM("STATE JACO1: " << ekf.computeStateTransitionF(0.1));
 
-	ekf.state.setOmega(Eigen::Vector3d(1/sqrt(3), 1/sqrt(3), 1/sqrt(3)));
-	ROS_DEBUG_STREAM("STATE JACO2: " << ekf.computeStateTransitionJacobian(ekf.state, 0.1));
+	/*ekf.state.setOmega(Eigen::Vector3d(1/sqrt(3), 1/sqrt(3), 1/sqrt(3)));
+	ROS_DEBUG_STREAM("STATE JACO2: " << ekf.computeStateTransitionF(0.1));
 	ekf.state.setOmega(Eigen::Vector3d(0, 0, 0));
 
 	ekf.state.setAccel(Eigen::Vector3d(0, 0, 1));
@@ -31,30 +31,30 @@ int main(int argc, char **argv)
 	ROS_DEBUG_STREAM("STATE JACO5: " << ekf.computeStateTransitionJacobian(ekf.state, 0.1));
 
 
-	ROS_DEBUG_STREAM("IMU JACO1: " << ekf.computeIMUMeasurementJacobian(ekf.state));
+	ROS_DEBUG_STREAM("IMU JACO1: " << ekf.computeIMUMeasurementJacobian(ekf.state));*/
 
-	ekf.state.setQuat(Eigen::Quaterniond(1, 0, 0, 0));
+	ekf.state.setTheta(Eigen::Vector3d(0, 0, 0));
 	ekf.state.setAccel(Eigen::Vector3d(0, 0, 0));
 
 	IMUMeasurement z_imu;
-	z_imu.Sigma = Eigen::MatrixXd::Identity(6, 6) * 0.01;
-	z_imu.z = Eigen::VectorXd::Zero(6, 1);
-	z_imu.z << 1, 1, 1, 1, 1, 1;
-	z_imu.H = Eigen::MatrixXd::Identity(6, STATE_VECTOR_SIZE);
+	z_imu.Sigma = Eigen::MatrixXd::Identity(5, 5) * 0.01;
+	z_imu.z = Eigen::VectorXd::Zero(5, 1);
+	z_imu.z << 0, 0, 1, 1, 1;
+	z_imu.H = Eigen::MatrixXd::Identity(5, STATE_VECTOR_SIZE);
 	z_imu.t = ekf.state.t;
 
 	ROS_DEBUG("made zimu");
 
 	PoseMeasurement z_pose;
-	z_pose.Sigma = Eigen::MatrixXd::Identity(7, 7) * 0.02;
-	z_pose.z = Eigen::VectorXd::Zero(7, 1);
-	z_pose.z << 2, 2, 2, 2, 2, 2, 2;
-	z_pose.H = Eigen::MatrixXd::Identity(7, STATE_VECTOR_SIZE);
+	z_pose.Sigma = Eigen::MatrixXd::Identity(6, 6) * 0.02;
+	z_pose.z = Eigen::VectorXd::Zero(6, 1);
+	z_pose.z << 2, 2, 2, 2, 2, 2;
+	z_pose.H = Eigen::MatrixXd::Identity(6, STATE_VECTOR_SIZE);
 	z_pose.t = ekf.state.t;
 
 	ROS_DEBUG("made zpose");
 
-	std::vector<Measurement> meas;
+	std::deque<Measurement> meas;
 	meas.push_back(Measurement(z_pose));
 	meas.push_back(Measurement(z_imu));
 

@@ -306,7 +306,7 @@ struct MeasurementCombination {
 	/*
 	 * all measurements must be predicted or set to the same time as prediction
 	 */
-	MeasurementCombination(std::vector<Measurement> meas, State prediction){
+	MeasurementCombination(std::deque<Measurement> meas, State prediction){
 		int z_rows = 0;
 
 		for(auto e : meas)

@@ -35,7 +35,7 @@ EKF::EKF(bool test) {
 
 	imu_sub = nh.subscribe<sensor_msgs::Imu>(IMU_TOPIC, 100, &EKF::imu_callback, this);
 	mantis_sub = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>(MANTIS_TOPIC, 2, &EKF::mantis_callback, this);
-	dipa_sub = nh.subscribe<geometry_msgs::TwistWithCovarianceStamped>(DIPA_TOPIC, 10, &EKF::dipa_callback, this);
+	dipa_sub = nh.subscribe<nav_msgs::Odometry>(DIPA_TOPIC, 10, &EKF::dipa_callback, this);
 
 	// set up pubs
 	ros::Publisher pose_pub, twist_pub, accel_pub;
@@ -97,25 +97,41 @@ void EKF::imu_callback(const sensor_msgs::ImuConstPtr& msg)
 	z.t = msg->header.stamp;
 
 	//transform the measurements into the body frame
-	tf::Vector3 accel, omega;
+	tf::Vector3 accel, omega,  accel_world;
 
-	accel = tf::Vector3(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
-	omega = tf::Vector3(msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
+	accel_world = tf::Vector3(this->state.ax(), this->state.ay(), this->state.az()); // the expected felt acceleration without gravity
+
+	//form the world to base transform using the current angle
+	tf::Matrix3x3 mat3;
+	mat3.setRPY(this->state.thetax(), this->state.thetay(), this->state.thetaz());
+	tf::Transform b2w = tf::Transform(mat3, tf::Vector3(this->state.x(), this->state.y(), this->state.z())).inverse();
+
+	accel = tf::Vector3(msg->linear_acceleration.x - AX_BIAS, msg->linear_acceleration.y - AY_BIAS, msg->linear_acceleration.z - AZ_BIAS);
+	omega = tf::Vector3(msg->angular_velocity.x - WX_BIAS, msg->angular_velocity.y - WY_BIAS, msg->angular_velocity.z - WZ_BIAS);
 
 	tf::Vector3 accel_b, omega_b;
 
-	accel_b = this->base2imu * accel - this->base2imu * tf::Vector3(0, 0, 0);
+	accel_b = (this->base2imu * accel - this->base2imu * tf::Vector3(0, 0, 0));
+
+	ROS_DEBUG_STREAM("imu base acceleration felt " << accel_b.x() << ", " << accel_b.y() << ", " << accel_b.z());
+
+	accel_b = accel_b - (b2w * accel_world - b2w * tf::Vector3(0, 0, 0));
+
+	ROS_DEBUG_STREAM("base acceleration felt without actual accel " << accel_b.x() << ", " << accel_b.y() << ", " << accel_b.z());
+
 	omega_b = this->base2imu * omega - this->base2imu * tf::Vector3(0, 0, 0);
+
+	double roll = atan2(-accel_b.x(), accel_b.z());
+	double pitch
 
 	z.z << accel_b.x(), accel_b.y(), accel_b.z(), omega_b.x(), omega_b.y(), omega_b.z();
 
-	Eigen::Matrix<double, 6, 6> sig = Eigen::MatrixXd::Zero(6, 6);
+	Eigen::Matrix<double, 5, 5> sig = Eigen::MatrixXd::Zero(5, 5);
 	sig(0, 0) = msg->linear_acceleration_covariance.at(0);
 	sig(1, 1) = msg->linear_acceleration_covariance.at(4);
-	sig(2, 2) = msg->linear_acceleration_covariance.at(8);
-	sig(3, 3) = msg->angular_velocity_covariance.at(0);
-	sig(4, 4) = msg->angular_velocity_covariance.at(4);
-	sig(5, 5) = msg->angular_velocity_covariance.at(8);
+	sig(2, 2) = msg->angular_velocity_covariance.at(0);
+	sig(3, 3) = msg->angular_velocity_covariance.at(4);
+	sig(4, 4) = msg->angular_velocity_covariance.at(8);
 
 	z.Sigma = sig;
 
@@ -168,7 +184,7 @@ void EKF::mantis_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr
 	this->addMeasurement(z);
 }
 
-void EKF::dipa_callback(const geometry_msgs::TwistWithCovarianceStampedConstPtr& msg)
+void EKF::dipa_callback(const nav_msgs::OdometryConstPtr& msg)
 {
 	TwistMeasurement z;
 
@@ -198,19 +214,19 @@ State EKF::process(State prior, ros::Time t)
 
 	posterior.t = t;
 
-	posterior.setPos(prior.getPos() + dt*prior.getVel() + 0.5*dt*dt*prior.getAccel());
+	posterior.setPos((prior.getPos() + dt*prior.getVel() + 0.5*dt*dt*prior.getAccel()));
 
 	posterior.setVel(prior.getVel() + dt*prior.getAccel());
 
 	posterior.setAccel(prior.getAccel());
 
-	posterior.setTheta(prior.getTheta() + prior.getOmega() * dt);
+	posterior.setTheta((prior.getTheta() + prior.getOmega() * dt));
 
 	//TODO constrain the theta
 
 	posterior.setOmega(prior.getOmega());
 
-	Eigen::Matrix<double, 16, 16> F = computeStateTransitionJacobian(prior, dt);
+	Eigen::Matrix<double, STATE_VECTOR_SIZE, STATE_VECTOR_SIZE> F = computeStateTransitionF(dt);
 
 	posterior.Sigma = F * prior.Sigma * F.transpose() + computeStateProcessError(dt);
 
@@ -272,13 +288,12 @@ Measurement EKF::predictMeasurementForward(Measurement z, ros::Time new_t){
 	if(z.getType() == Measurement::IMU)
 	{
 		// same measurement more variance
-		Eigen::Matrix<double, 6, 6> R;
+		Eigen::Matrix<double, 5, 5> R;
 		R(0, 0) = dt*0.01;
 		R(1, 1) = dt*0.01;
-		R(2, 2) = dt*0.01;
+		R(2, 2) = dt*0.005;
 		R(3, 3) = dt*0.005;
 		R(4, 4) = dt*0.005;
-		R(5, 5) = dt*0.005;
 
 		IMUMeasurement imuz;
 
@@ -311,13 +326,12 @@ Measurement EKF::predictMeasurementForward(Measurement z, ros::Time new_t){
 		posez.z(4) = reference.thetay();
 		posez.z(5) = reference.thetaz();
 
-		Eigen::Matrix<double, 7, 7> R;
-		R(0, 0) = dt*1;
-		R(1, 1) = dt*1;
-		R(2, 2) = dt*1;
-		R(3, 3) = dt*1;
-		R(4, 4) = dt*1;
-		R(5, 5) = dt*1;
+		Eigen::Matrix<double, 6, 6> R;
+		R(0, 0) = dt*POSE_PREDICT_SIGMA;
+		R(1, 1) = dt*POSE_PREDICT_SIGMA;
+		R(2, 2) = dt*POSE_PREDICT_SIGMA;
+		R(3, 3) = dt*POSE_PREDICT_SIGMA;
+		R(4, 4) = dt*POSE_PREDICT_SIGMA;
 
 		posez.Sigma = z.getSigma() + R;
 
@@ -347,12 +361,12 @@ Measurement EKF::predictMeasurementForward(Measurement z, ros::Time new_t){
 		twistz.z(5) = reference.wz();
 
 		Eigen::Matrix<double, 6, 6> R;
-		R(0, 0) = dt*0.5;
-		R(1, 1) = dt*0.5;
-		R(2, 2) = dt*0.5;
-		R(3, 3) = dt*0.5;
-		R(4, 4) = dt*0.5;
-		R(5, 5) = dt*0.5;
+		R(0, 0) = dt*TWIST_PREDICT_SIGMA;
+		R(1, 1) = dt*TWIST_PREDICT_SIGMA;
+		R(2, 2) = dt*TWIST_PREDICT_SIGMA;
+		R(3, 3) = dt*TWIST_PREDICT_SIGMA;
+		R(4, 4) = dt*TWIST_PREDICT_SIGMA;
+		R(5, 5) = dt*TWIST_PREDICT_SIGMA;
 
 		twistz.Sigma = z.getSigma() + R;
 
