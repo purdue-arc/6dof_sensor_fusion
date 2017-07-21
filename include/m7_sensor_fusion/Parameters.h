@@ -11,12 +11,12 @@
 #define MAXIMUM_OLD_STATES 1000
 
 #define BASE_FRAME "base_link"
-#define IMU_FRAME "imu_frame"
+#define IMU_FRAME "imu_link"
 
 #define REMOVE_SIMILAR_MEASUREMENTS false
 
 #define MANTIS_TOPIC "mantis/pose_estimate"
-#define IMU_TOPIC "imu/measurements"
+#define IMU_TOPIC "imu/measurement"
 #define DIPA_TOPIC "dipa/twist_estimate"
 
 #define POSE_PUB_TOPIC "state/pose"
@@ -44,17 +44,30 @@
 #define POSE_PREDICT_SIGMA 3.0
 #define TWIST_PREDICT_SIGMA 0.5
 
+#define IMU_ANGLE_SIGMA_ACCEL_MULTIPLIER 1.0
+
+#define USE_SIM_BIASES true
+
+#if !USE_SIM_BIASES
+actual baises
 #define AZ_BIAS 0.45
 #define AY_BIAS -0.1
 #define AX_BIAS 0.1
-
 //-1.7 d/s
 #define WX_BIAS -0.0296705973
 // -1.4 d/s
 #define WY_BIAS -0.0244346095
 // 1.7 d/s
 #define WZ_BIAS 0.0296706
-
+#else
+//sim biases
+#define AX_BIAS 0.55
+#define AY_BIAS 0.06
+#define AZ_BIAS 0.38
+#define WX_BIAS -0.05
+#define WY_BIAS 0.05
+#define WZ_BIAS 0.234
+#endif
 
 #define G 9.815
 #define PI 3.14159265359

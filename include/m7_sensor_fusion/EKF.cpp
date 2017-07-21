@@ -54,8 +54,16 @@ EKF::EKF(bool test) {
 			ros::spinOnce();
 			//TODO set the start time if ros::Time(0) = the state's time
 			//TODO only start predicting and fusing when their is a odometry estimate
+			State last_state = this->state;
 			this->state = this->process(this->state, ros::Time::now());
+
+			this->predictAllMeasurementsForward(this->state.t);
+
 			MeasurementCombination mc = MeasurementCombination(this->measurements, this->state);
+
+			//clear the measurement
+			this->measurements.clear();
+
 			this->state = this->update(this->state, mc);
 
 			loop_rate.sleep(); // sleep until the next time we should predict and update
@@ -106,8 +114,10 @@ void EKF::imu_callback(const sensor_msgs::ImuConstPtr& msg)
 	mat3.setRPY(this->state.thetax(), this->state.thetay(), this->state.thetaz());
 	tf::Transform b2w = tf::Transform(mat3, tf::Vector3(this->state.x(), this->state.y(), this->state.z())).inverse();
 
+
 	accel = tf::Vector3(msg->linear_acceleration.x - AX_BIAS, msg->linear_acceleration.y - AY_BIAS, msg->linear_acceleration.z - AZ_BIAS);
 	omega = tf::Vector3(msg->angular_velocity.x - WX_BIAS, msg->angular_velocity.y - WY_BIAS, msg->angular_velocity.z - WZ_BIAS);
+
 
 	tf::Vector3 accel_b, omega_b;
 
@@ -122,13 +132,17 @@ void EKF::imu_callback(const sensor_msgs::ImuConstPtr& msg)
 	omega_b = this->base2imu * omega - this->base2imu * tf::Vector3(0, 0, 0);
 
 	double roll = atan2(-accel_b.x(), accel_b.z());
-	double pitch
+	double pitch = atan2(accel_b.y(), sqrt(accel_b.x()*accel_b.x() + accel_b.z()*accel_b.z()));
 
-	z.z << accel_b.x(), accel_b.y(), accel_b.z(), omega_b.x(), omega_b.y(), omega_b.z();
+	ROS_DEBUG_STREAM("roll pitch: " << roll << ", " << pitch);
+
+	z.z << roll, pitch, omega_b.x(), omega_b.y(), omega_b.z();
+
+	double actual_accel_mag = accel_world.length();
 
 	Eigen::Matrix<double, 5, 5> sig = Eigen::MatrixXd::Zero(5, 5);
-	sig(0, 0) = msg->linear_acceleration_covariance.at(0);
-	sig(1, 1) = msg->linear_acceleration_covariance.at(4);
+	sig(0, 0) = msg->linear_acceleration_covariance.at(0) + actual_accel_mag * IMU_ANGLE_SIGMA_ACCEL_MULTIPLIER;
+	sig(1, 1) = msg->linear_acceleration_covariance.at(4) + actual_accel_mag * IMU_ANGLE_SIGMA_ACCEL_MULTIPLIER;
 	sig(2, 2) = msg->angular_velocity_covariance.at(0);
 	sig(3, 3) = msg->angular_velocity_covariance.at(4);
 	sig(4, 4) = msg->angular_velocity_covariance.at(8);
@@ -145,6 +159,9 @@ void EKF::imu_callback(const sensor_msgs::ImuConstPtr& msg)
 			ROS_DEBUG_STREAM("z after: " << z.z);
 		}
 	}
+
+	//set h
+	z.H = this->computeIMUMeasurementH();
 
 	this->addMeasurement(z);
 
@@ -180,6 +197,8 @@ void EKF::mantis_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr
 	z.Sigma(5, 5) = msg->pose.covariance.at(5*6 + 5);//thetaz
 
 	//z.Sigma(3, 3) = (z.Sigma(6, 6)+z.Sigma(5, 5)+z.Sigma(4, 4)) / 3.0;//q0q0
+
+	z.H = this->computePoseMeasurementH();
 
 	this->addMeasurement(z);
 }
@@ -283,7 +302,17 @@ Measurement EKF::predictMeasurementForward(Measurement z, ros::Time new_t){
 
 	double dt = new_t.toSec() - z.getTime().toSec();
 
-	ROS_ASSERT(dt > 0);
+	//ROS_ASSERT(dt >= 0);
+
+	if(dt == 0) // don't predict it if it is already new
+	{
+		return z;
+	}
+
+	if(dt < 0)
+	{
+		ROS_WARN_STREAM("Measurement is from the future with dt: " << dt);
+	}
 
 	if(z.getType() == Measurement::IMU)
 	{
@@ -376,6 +405,14 @@ Measurement EKF::predictMeasurementForward(Measurement z, ros::Time new_t){
 	{
 		ROS_FATAL("invalid type for measurement interpolation!");
 		return Measurement();
+	}
+}
+
+void EKF::predictAllMeasurementsForward(ros::Time new_t)
+{
+	for(auto& e : this->measurements)
+	{
+		e = this->predictMeasurementForward(e, new_t);
 	}
 }
 

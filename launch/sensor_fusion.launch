@@ -1,13 +1,15 @@
 <launch>
 
-	<group ns="m7">
-		<node name="sensor_fusion" pkg="m7_sensor_fusion" type="sensor_fusion" output="screen"/>
-	</group>
+	<param name="use_sim_time" value="true"/>
+
+	<node name="sensor_fusion" pkg="m7_sensor_fusion" type="sensor_fusion" output="screen"/>
 	
-	<node pkg="tf" type="static_transform_publisher" name="IMU_base" 
-			args="0.01 -0.034 0 0 0 0 /imu_frame /base_link 100"/>
-			
-	<node pkg="tf" type="static_transform_publisher" name="base_camera" 
-			args="0.096 0 0.023 0 -0.087266 0 /base_link /camera_frame 100"/> 
+	
+	<param name="m7_description" command="cat $(find m7_master)/urdf/m7_robot.urdf" />
+
+	<node pkg="robot_state_publisher" type="robot_state_publisher" name="m7_state_pub" >
+      <remap from="robot_description" to="m7_description" />
+      <remap from="joint_states" to="/arm/jointStates" />
+	</node>
 	
 </launch>

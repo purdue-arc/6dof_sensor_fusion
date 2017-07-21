@@ -27,7 +27,7 @@ Eigen::Matrix<double, STATE_VECTOR_SIZE, STATE_VECTOR_SIZE> EKF::computeStateTra
 	F(10, 13) = dt;
 	F(11, 14) = dt;
 
-	ROS_DEBUG_STREAM("F: " << F);
+	//ROS_DEBUG_STREAM("F: " << F);
 
 	return F;
 }

@@ -70,6 +70,8 @@ public:
 
 	State findClosestState(ros::Time t);
 
+	void predictAllMeasurementsForward(ros::Time new_t);
+
 	Measurement predictMeasurementForward(Measurement z, ros::Time new_t);
 
 	void addMeasurement(Measurement z);

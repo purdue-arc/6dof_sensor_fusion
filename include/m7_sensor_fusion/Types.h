@@ -306,10 +306,10 @@ struct MeasurementCombination {
 	/*
 	 * all measurements must be predicted or set to the same time as prediction
 	 */
-	MeasurementCombination(std::deque<Measurement> meas, State prediction){
+	MeasurementCombination(std::deque<Measurement>& meas, State prediction){
 		int z_rows = 0;
 
-		for(auto e : meas)
+		for(auto& e : meas)
 		{
 			ROS_ASSERT(e.getTime() == prediction.t);
 			z_rows += e.getZ().rows();
@@ -320,7 +320,7 @@ struct MeasurementCombination {
 		Sigma = Eigen::MatrixXd::Zero(z_rows, z_rows);
 
 		int i = 0;
-		for(auto e : meas)
+		for(auto& e : meas)
 		{
 			z.block(i, 0, e.getZ().rows(), 1) = e.getZ();
 			H.block(i, 0, e.getH().rows(), STATE_VECTOR_SIZE) = e.getH();
