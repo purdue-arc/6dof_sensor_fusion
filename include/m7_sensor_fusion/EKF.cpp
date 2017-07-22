@@ -55,18 +55,16 @@ EKF::EKF(bool test) {
 			//TODO set the start time if ros::Time(0) = the state's time
 			//TODO only start predicting and fusing when their is a odometry estimate
 
-			//if we have measurements, push back the current state as an old one
-			if(this->measurements.size())
+			old_states.push_back(this->state);
+
+			this->state = this->process(this->state, ros::Time::now());
+
+			this->predictAllMeasurementsForward(this->state.t);
+
+
+			//only update if there are measurements
+			if(this->measurements.size() > 0)
 			{
-				old_states.push_back(this->state);
-			}
-
-			this->state = this->process(old_states.back(), ros::Time::now());
-
-			if(this->measurements.size())
-			{
-				this->predictAllMeasurementsForward(this->state.t);
-
 				MeasurementCombination mc = MeasurementCombination(this->measurements, this->state);
 
 				//clear the measurement
@@ -154,6 +152,8 @@ void EKF::imu_callback(const sensor_msgs::ImuConstPtr& msg)
 
 	//set h
 	z.H = this->computeIMUMeasurementH();
+
+
 
 	this->addMeasurement(z);
 
@@ -311,6 +311,8 @@ Measurement EKF::predictMeasurementForward(Measurement z, ros::Time new_t){
 
 	double dt = new_t.toSec() - z.getTime().toSec();
 
+	ROS_DEBUG_STREAM("predicting measurement type: " << z.getType() << " with dt: " << dt);
+
 	//ROS_ASSERT(dt >= 0);
 
 	if(dt == 0) // don't predict it if it is already new
@@ -325,6 +327,8 @@ Measurement EKF::predictMeasurementForward(Measurement z, ros::Time new_t){
 
 	if(z.getType() == Measurement::IMU)
 	{
+		ROS_DEBUG_STREAM("sigma before meas pred: " << z.getSigma());
+
 		// same measurement more variance
 		Eigen::Matrix<double, 5, 5> R;
 		R(0, 0) = dt*0.01;
@@ -338,7 +342,10 @@ Measurement EKF::predictMeasurementForward(Measurement z, ros::Time new_t){
 		imuz.H = z.getH();
 		imuz.z = z.getZ();
 		imuz.t = new_t;
-		imuz.Sigma = z.getSigma() + R;
+		//imuz.Sigma = z.getSigma() + R;
+		imuz.Sigma = z.getSigma();
+
+		ROS_DEBUG_STREAM("sigma after meas pred: " << imuz.Sigma);
 
 		return Measurement(imuz);
 	}

@@ -344,11 +344,13 @@ struct MeasurementCombination {
 	MeasurementCombination(std::deque<Measurement>& meas, State prediction){
 		int z_rows = 0;
 
+		ROS_DEBUG_STREAM("starting combine");
+
 		for(auto& e : meas)
 		{
 			ROS_ASSERT(e.getTime() == prediction.t);
 			z_rows += e.getZ().rows();
-			ROS_DEBUG_STREAM("combinging sig: " << e.getSigma());
+			ROS_DEBUG_STREAM("combinging SIGMA: " << e.getSigma());
 		}
 
 		z.resize(z_rows, 1);
@@ -366,6 +368,8 @@ struct MeasurementCombination {
 		}
 
 		t = prediction.t;
+
+		ROS_DEBUG_STREAM("combined sigma: " << Sigma);
 	}
 };
 
