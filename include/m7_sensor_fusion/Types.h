@@ -120,6 +120,41 @@ struct State {
 		return Eigen::Vector3d(wx(), wy(), wz());
 	}
 
+	double constrainAngle(double angle)
+	{
+		double new_angle = angle;
+		bool pass = false;
+		while(!pass)
+		{
+			if(new_angle < -PI)
+			{
+				new_angle += 2*PI;
+			}
+			else if(new_angle >= PI)
+			{
+				new_angle -= 2*PI;
+			}
+			else
+			{
+				pass = true;
+			}
+		}
+		return new_angle;
+
+	}
+
+	void constrainTheta()
+	{
+		ROS_DEBUG_STREAM("before constrain: " << getTheta());
+		vec(9) = constrainAngle(vec(9));
+		vec(10) = constrainAngle(vec(10));
+		vec(11) = constrainAngle(vec(11));
+		ROS_DEBUG_STREAM("after constrain: " << getTheta());
+	}
+
+	void printState(){
+		ROS_INFO_STREAM("State: x: " << x() << " y: " << y() << " z: " <<    z() << " roll: " << thetax() << " pitch: " << thetay() << " yaw: " << thetaz() << " dx: " << dx() << " dy: " << dy() << " dz: " << dz());
+	}
 
 	/*Eigen::Quaterniond getQuaternion() {
 		return Eigen::Quaterniond(q0(), q1(), q2(), q3());
@@ -313,6 +348,7 @@ struct MeasurementCombination {
 		{
 			ROS_ASSERT(e.getTime() == prediction.t);
 			z_rows += e.getZ().rows();
+			ROS_DEBUG_STREAM("combinging sig: " << e.getSigma());
 		}
 
 		z.resize(z_rows, 1);
@@ -322,6 +358,7 @@ struct MeasurementCombination {
 		int i = 0;
 		for(auto& e : meas)
 		{
+
 			z.block(i, 0, e.getZ().rows(), 1) = e.getZ();
 			H.block(i, 0, e.getH().rows(), STATE_VECTOR_SIZE) = e.getH();
 			Sigma.block(i, i, e.getSigma().rows(), e.getSigma().rows()) = e.getSigma();

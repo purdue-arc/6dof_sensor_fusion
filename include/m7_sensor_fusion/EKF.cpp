@@ -54,17 +54,30 @@ EKF::EKF(bool test) {
 			ros::spinOnce();
 			//TODO set the start time if ros::Time(0) = the state's time
 			//TODO only start predicting and fusing when their is a odometry estimate
-			State last_state = this->state;
-			this->state = this->process(this->state, ros::Time::now());
 
-			this->predictAllMeasurementsForward(this->state.t);
+			//if we have measurements, push back the current state as an old one
+			if(this->measurements.size())
+			{
+				old_states.push_back(this->state);
+			}
 
-			MeasurementCombination mc = MeasurementCombination(this->measurements, this->state);
+			this->state = this->process(old_states.back(), ros::Time::now());
 
-			//clear the measurement
-			this->measurements.clear();
+			if(this->measurements.size())
+			{
+				this->predictAllMeasurementsForward(this->state.t);
 
-			this->state = this->update(this->state, mc);
+				MeasurementCombination mc = MeasurementCombination(this->measurements, this->state);
+
+				//clear the measurement
+				this->measurements.clear();
+
+				this->state = this->update(this->state, mc);
+			}
+
+#if SUPER_DEBUG
+			this->state.printState();
+#endif
 
 			loop_rate.sleep(); // sleep until the next time we should predict and update
 		}
@@ -75,28 +88,7 @@ EKF::~EKF() {
 	// TODO Auto-generated destructor stub
 }
 
-double EKF::constrainAngle(double angle)
-{
-	double new_angle = angle;
-	bool pass = false;
-	while(!pass)
-	{
-		if(new_angle < -PI)
-		{
-			new_angle += 2*PI;
-		}
-		else if(new_angle >= PI)
-		{
-			new_angle -= 2*PI;
-		}
-		else
-		{
-			pass = true;
-		}
-	}
-	return new_angle;
 
-}
 
 void EKF::imu_callback(const sensor_msgs::ImuConstPtr& msg)
 {
@@ -149,7 +141,7 @@ void EKF::imu_callback(const sensor_msgs::ImuConstPtr& msg)
 
 	z.Sigma = sig;
 
-	// average imu_msgs if there is another
+	/*// average imu_msgs if there is another
 	for(auto e : this->measurements)
 	{
 		if(e.getType() == Measurement::IMU)
@@ -158,7 +150,7 @@ void EKF::imu_callback(const sensor_msgs::ImuConstPtr& msg)
 			z.z = 0.5 * (z.z + e.getZ());
 			ROS_DEBUG_STREAM("z after: " << z.z);
 		}
-	}
+	}*/
 
 	//set h
 	z.H = this->computeIMUMeasurementH();
@@ -180,9 +172,9 @@ void EKF::mantis_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr
 	tf::Matrix3x3 mat3 = tf::Matrix3x3(quat);
 	mat3.getRPY(r, p, y);
 
-	r = this->constrainAngle(r);
-	p = this->constrainAngle(p);
-	y = this->constrainAngle(y);
+	r = this->state.constrainAngle(r);
+	p = this->state.constrainAngle(p);
+	y = this->state.constrainAngle(y);
 
 	z.z << msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z, r, p, y;
 
@@ -221,6 +213,7 @@ void EKF::dipa_callback(const nav_msgs::OdometryConstPtr& msg)
 	z.Sigma(4, 4) = msg->twist.covariance.at(4*6 + 4);//wywy
 	z.Sigma(5, 5) = msg->twist.covariance.at(5*6 + 5);//wzwz
 
+	z.H = this->computeTwistMeasurementH();
 
 	this->addMeasurement(z);
 }
@@ -228,6 +221,11 @@ void EKF::dipa_callback(const nav_msgs::OdometryConstPtr& msg)
 State EKF::process(State prior, ros::Time t)
 {
 	double dt = (t - prior.t).toSec();
+
+	ROS_DEBUG_STREAM("predicting with dt: " << dt);
+
+	ROS_DEBUG("state before predict: ");
+	prior.printState();
 
 	State posterior;
 
@@ -241,7 +239,8 @@ State EKF::process(State prior, ros::Time t)
 
 	posterior.setTheta((prior.getTheta() + prior.getOmega() * dt));
 
-	//TODO constrain the theta
+	//constrain the theta
+	posterior.constrainTheta();
 
 	posterior.setOmega(prior.getOmega());
 
@@ -249,12 +248,20 @@ State EKF::process(State prior, ros::Time t)
 
 	posterior.Sigma = F * prior.Sigma * F.transpose() + computeStateProcessError(dt);
 
+	ROS_DEBUG("state after predict: ");
+	posterior.printState();
+
 	return posterior;
 
 }
 
 State EKF::update(State prior, MeasurementCombination mats)
 {
+	ROS_DEBUG_STREAM("update z: " << mats.z);
+	ROS_DEBUG_STREAM("update H: " << mats.H);
+	ROS_DEBUG_STREAM("update sig: " << mats.Sigma);
+	ROS_DEBUG_STREAM("update time: " << mats.t);
+
 	Eigen::VectorXd y = mats.z - mats.H * prior.vec; //residual
 
 	Eigen::MatrixXd S = mats.H * prior.Sigma * mats.H.transpose() + mats.Sigma;
@@ -266,7 +273,9 @@ State EKF::update(State prior, MeasurementCombination mats)
 	posterior.vec = prior.vec + K * y;
 	posterior.Sigma = (Eigen::MatrixXd::Identity(STATE_VECTOR_SIZE, STATE_VECTOR_SIZE) - K * mats.H) * prior.Sigma;
 
-	old_states.push_back(prior);
+	//constrain theta
+	posterior.constrainTheta();
+
 
 	return posterior;
 }

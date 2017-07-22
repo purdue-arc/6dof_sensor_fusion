@@ -75,9 +75,6 @@ public:
 	Measurement predictMeasurementForward(Measurement z, ros::Time new_t);
 
 	void addMeasurement(Measurement z);
-
-	double constrainAngle(double angle);
-
 };
 
 #endif /* M7_SENSOR_FUSION_INCLUDE_M7_SENSOR_FUSION_EKF_H_ */
