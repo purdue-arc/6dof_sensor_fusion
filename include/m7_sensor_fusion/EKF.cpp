@@ -330,7 +330,7 @@ Measurement EKF::predictMeasurementForward(Measurement z, ros::Time new_t){
 		ROS_DEBUG_STREAM("sigma before meas pred: " << z.getSigma());
 
 		// same measurement more variance
-		Eigen::Matrix<double, 5, 5> R;
+		Eigen::Matrix<double, 5, 5> R = Eigen::MatrixXd::Zero(5, 5);
 		R(0, 0) = dt*0.01;
 		R(1, 1) = dt*0.01;
 		R(2, 2) = dt*0.005;
@@ -342,8 +342,8 @@ Measurement EKF::predictMeasurementForward(Measurement z, ros::Time new_t){
 		imuz.H = z.getH();
 		imuz.z = z.getZ();
 		imuz.t = new_t;
-		//imuz.Sigma = z.getSigma() + R;
-		imuz.Sigma = z.getSigma();
+		imuz.Sigma = z.getSigma() + R;
+		//imuz.Sigma = z.getSigma();
 
 		ROS_DEBUG_STREAM("sigma after meas pred: " << imuz.Sigma);
 
@@ -371,7 +371,7 @@ Measurement EKF::predictMeasurementForward(Measurement z, ros::Time new_t){
 		posez.z(4) = reference.thetay();
 		posez.z(5) = reference.thetaz();
 
-		Eigen::Matrix<double, 6, 6> R;
+		Eigen::Matrix<double, 6, 6> R = Eigen::MatrixXd::Zero(6, 6);;
 		R(0, 0) = dt*POSE_PREDICT_SIGMA;
 		R(1, 1) = dt*POSE_PREDICT_SIGMA;
 		R(2, 2) = dt*POSE_PREDICT_SIGMA;
@@ -405,7 +405,7 @@ Measurement EKF::predictMeasurementForward(Measurement z, ros::Time new_t){
 		twistz.z(4) = reference.wy();
 		twistz.z(5) = reference.wz();
 
-		Eigen::Matrix<double, 6, 6> R;
+		Eigen::Matrix<double, 6, 6> R = Eigen::MatrixXd::Zero(6, 6);;
 		R(0, 0) = dt*TWIST_PREDICT_SIGMA;
 		R(1, 1) = dt*TWIST_PREDICT_SIGMA;
 		R(2, 2) = dt*TWIST_PREDICT_SIGMA;
