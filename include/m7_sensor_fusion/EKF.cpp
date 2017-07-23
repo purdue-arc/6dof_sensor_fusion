@@ -299,12 +299,16 @@ void EKF::dipa_callback(const nav_msgs::OdometryConstPtr& msg)
 	mat3.setRPY(stateEstimateAtThisTime.thetax(), stateEstimateAtThisTime.thetay(), stateEstimateAtThisTime.thetaz());
 	w2b = tf::Transform(mat3, tf::Vector3(stateEstimateAtThisTime.x(), stateEstimateAtThisTime.y(), stateEstimateAtThisTime.z()));
 
-	tf::Transform world2dipaCam = (w2b * base2dipaCam);
+	//tf::Transform world2dipaCam = (w2b * base2dipaCam);
+	tf::Transform world2dipaCam = (w2b);
 
 	//in world frame
+	//tf::Vector3 linear = world2dipaCam * tf::Vector3(msg->twist.twist.linear.x, msg->twist.twist.linear.y, msg->twist.twist.linear.z) - world2dipaCam * tf::Vector3(0, 0, 0);
 	tf::Vector3 linear = world2dipaCam * tf::Vector3(msg->twist.twist.linear.x, msg->twist.twist.linear.y, msg->twist.twist.linear.z) - world2dipaCam * tf::Vector3(0, 0, 0);
 	//in base frame
-	tf::Vector3 angular = base2dipaCam * tf::Vector3(msg->twist.twist.angular.x, msg->twist.twist.angular.y, msg->twist.twist.angular.z) - base2dipaCam * tf::Vector3(0, 0, 0);
+	//tf::Vector3 angular = base2dipaCam * tf::Vector3(msg->twist.twist.angular.x, msg->twist.twist.angular.y, msg->twist.twist.angular.z) - base2dipaCam * tf::Vector3(0, 0, 0);
+	tf::Vector3 angular = tf::Vector3(msg->twist.twist.angular.x, msg->twist.twist.angular.y, msg->twist.twist.angular.z);
+
 	z.z << linear.x(), linear.y(), linear.z(), angular.x(), angular.y(), angular.z();
 
 	ROS_DEBUG_STREAM("odom meas after transform: " << z.z);

@@ -12,4 +12,9 @@
       <remap from="joint_states" to="/arm/jointStates" />
 	</node>
 	
+	<node pkg="dipa" type="dipa_node" name="dipa_node" output="screen">
+	</node>
+	
+	<node name="image_proc" pkg="image_proc" type="image_proc" ns="bottom_camera"/>
+	
 </launch>

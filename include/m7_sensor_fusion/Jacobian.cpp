@@ -194,9 +194,9 @@ Eigen::Matrix<double, 6, STATE_VECTOR_SIZE> EKF::computeTwistMeasurementH()
 	Eigen::Matrix<double, 6, STATE_VECTOR_SIZE> H;
 	H.setZero();
 
-	H(0, 4) = 1.0;
-	H(1, 5) = 1.0;
-	H(2, 6) = 1.0;
+	H(0, 3) = 1.0;
+	H(1, 4) = 1.0;
+	H(2, 5) = 1.0;
 	H(3, 12) = 1.0;
 	H(4, 13) = 1.0;
 	H(5, 14) = 1.0;

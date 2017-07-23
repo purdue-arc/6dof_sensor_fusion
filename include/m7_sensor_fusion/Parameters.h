@@ -21,7 +21,7 @@
 
 #define MANTIS_TOPIC "mantis/pose_estimate"
 #define IMU_TOPIC "imu/measurement"
-#define DIPA_TOPIC "dipa/twist_estimate"
+#define DIPA_TOPIC "dipa/odom"
 #define SONAR_TOPIC "sonar/scan"
 
 #define POSE_PUB_TOPIC "state/pose"
@@ -35,16 +35,16 @@
 #define MAX_ROWS 19
 
 #define INITIAL_POS_SIGMA 10000
-#define INITIAL_VEL_SIGMA 10
-#define INITIAL_ACCEL_SIGMA 10
-#define INITIAL_THETA_SIGMA 10
-#define INITIAL_OMEGA_SIGMA 10
+#define INITIAL_VEL_SIGMA 10000
+#define INITIAL_ACCEL_SIGMA 10000
+#define INITIAL_THETA_SIGMA 10000
+#define INITIAL_OMEGA_SIGMA 10000
 
-#define POS_PROCESS_SIGMA 1.0
-#define VEL_PROCESS_SIGMA 2.0
-#define ACCEL_PROCESS_SIGMA 3.0
-#define THETA_PROCESS_SIGMA 0.5
-#define OMEGA_PROCESS_SIGMA 0.02
+#define POS_PROCESS_SIGMA 100
+#define VEL_PROCESS_SIGMA 100
+#define ACCEL_PROCESS_SIGMA 100
+#define THETA_PROCESS_SIGMA 100
+#define OMEGA_PROCESS_SIGMA 1.0
 
 #define POSE_PREDICT_SIGMA 3.0
 #define TWIST_PREDICT_SIGMA 0.5
