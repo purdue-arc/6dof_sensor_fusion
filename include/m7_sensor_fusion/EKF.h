@@ -15,6 +15,7 @@
 #include <geometry_msgs/TwistWithCovarianceStamped.h>
 #include <geometry_msgs/AccelWithCovarianceStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <sensor_msgs/Range.h>
 
 #include <nav_msgs/Odometry.h>
 
@@ -52,6 +53,7 @@ public:
 	void imu_callback(const sensor_msgs::ImuConstPtr& msg);
 	void mantis_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
 	void dipa_callback(const nav_msgs::OdometryConstPtr& msg);
+	void sonar_callback(const sensor_msgs::RangeConstPtr& msg);
 
 	State process(State prior, ros::Time t);
 

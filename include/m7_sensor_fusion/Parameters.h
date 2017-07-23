@@ -22,6 +22,7 @@
 #define MANTIS_TOPIC "mantis/pose_estimate"
 #define IMU_TOPIC "imu/measurement"
 #define DIPA_TOPIC "dipa/twist_estimate"
+#define SONAR_TOPIC "sonar/scan"
 
 #define POSE_PUB_TOPIC "state/pose"
 #define TWIST_PUB_TOPIC "state/twist"
@@ -39,14 +40,18 @@
 #define INITIAL_THETA_SIGMA 10
 #define INITIAL_OMEGA_SIGMA 10
 
-#define POS_PROCESS_SIGMA 0.1
-#define VEL_PROCESS_SIGMA 0.05
-#define ACCEL_PROCESS_SIGMA 0.01
+#define POS_PROCESS_SIGMA 1.0
+#define VEL_PROCESS_SIGMA 2.0
+#define ACCEL_PROCESS_SIGMA 3.0
 #define THETA_PROCESS_SIGMA 0.5
 #define OMEGA_PROCESS_SIGMA 0.02
 
 #define POSE_PREDICT_SIGMA 3.0
 #define TWIST_PREDICT_SIGMA 0.5
+
+#define SONAR_DIST_SIG_MULTIPLIER 0.01
+//always add this
+#define CONSTANT_SONAR_SIG 0.03
 
 #define IMU_ANGLE_SIGMA_ACCEL_MULTIPLIER 1.0
 
@@ -65,12 +70,12 @@ actual baises
 #define WZ_BIAS 0.0296706
 #else
 //sim biases
-#define AX_BIAS 0.55
-#define AY_BIAS 0.06
-#define AZ_BIAS 0.38
-#define WX_BIAS -0.05
-#define WY_BIAS 0.05
-#define WZ_BIAS 0.234
+#define AX_BIAS 0.41
+#define AY_BIAS 0.05
+#define AZ_BIAS -0.03
+#define WX_BIAS -0.12
+#define WY_BIAS -0.031
+#define WZ_BIAS -0.0304
 #endif
 
 #define G 9.815

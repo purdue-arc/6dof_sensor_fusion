@@ -30,12 +30,53 @@ EKF::EKF(bool test) {
 		return;
 	}
 
+	// get the transform between the sonar and base
+	ROS_INFO_STREAM("WAITING FOR TANSFORM FROM " << BASE_FRAME << " TO " << SONAR_FRAME);
+	if(tf_listener.waitForTransform(BASE_FRAME, SONAR_FRAME, ros::Time(0), ros::Duration(2))){
+		tf::StampedTransform b2s;
+		try {
+			tf_listener.lookupTransform(BASE_FRAME, SONAR_FRAME,
+					ros::Time(0), b2s);
+		} catch (tf::TransformException& e) {
+			ROS_WARN_STREAM(e.what());
+		}
+		base2sonar = tf::Transform(b2s);
+		ROS_INFO("GOT TRANSFORM");
+	}
+	else
+	{
+		ROS_FATAL("COULD NOT GET TRANSFORM");
+		ros::shutdown();
+		return;
+	}
+
+	// get the transform between the dipacam and base
+	ROS_INFO_STREAM("WAITING FOR TANSFORM FROM " << BASE_FRAME << " TO " << DIPA_CAM_FRAME);
+	if(tf_listener.waitForTransform(BASE_FRAME, DIPA_CAM_FRAME, ros::Time(0), ros::Duration(2))){
+		tf::StampedTransform b2dc;
+		try {
+			tf_listener.lookupTransform(BASE_FRAME, DIPA_CAM_FRAME,
+					ros::Time(0), b2dc);
+		} catch (tf::TransformException& e) {
+			ROS_WARN_STREAM(e.what());
+		}
+		base2dipaCam = tf::Transform(b2dc);
+		ROS_INFO("GOT TRANSFORM");
+	}
+	else
+	{
+		ROS_FATAL("COULD NOT GET TRANSFORM");
+		ros::shutdown();
+		return;
+	}
+
 	// set up subs
-	ros::Subscriber imu_sub, mantis_sub, dipa_sub;
+	ros::Subscriber imu_sub, mantis_sub, dipa_sub, sonar_sub;
 
 	imu_sub = nh.subscribe<sensor_msgs::Imu>(IMU_TOPIC, 100, &EKF::imu_callback, this);
 	mantis_sub = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>(MANTIS_TOPIC, 2, &EKF::mantis_callback, this);
 	dipa_sub = nh.subscribe<nav_msgs::Odometry>(DIPA_TOPIC, 10, &EKF::dipa_callback, this);
+	sonar_sub = nh.subscribe<sensor_msgs::Range>(SONAR_TOPIC, 10, &EKF::sonar_callback, this);
 
 	// set up pubs
 	ros::Publisher pose_pub, twist_pub, accel_pub;
@@ -86,6 +127,47 @@ EKF::~EKF() {
 	// TODO Auto-generated destructor stub
 }
 
+
+void EKF::sonar_callback(const sensor_msgs::RangeConstPtr& msg){
+	ROS_DEBUG_STREAM("got sonar");
+
+	tf::Vector3  depthVec(0, 0, msg->range);
+
+	//find the state prediction at the time of the sonar measurement
+	State stateAtMeasTime =  this->process(this->findClosestState(msg->header.stamp), msg->header.stamp);
+
+	ROS_DEBUG_STREAM("transforming range meas with state: ");
+	stateAtMeasTime.printState();
+
+	//form a world to base transform from the state
+	tf::Transform w2b;
+	tf::Matrix3x3 mat3;
+	mat3.setRPY(stateAtMeasTime.thetax(), stateAtMeasTime.thetay(), stateAtMeasTime.thetaz());
+	w2b = tf::Transform(mat3, tf::Vector3(stateAtMeasTime.x(), stateAtMeasTime.y(), stateAtMeasTime.z()));
+
+	double z_meas = (((w2b * base2sonar) * depthVec) - w2b.getOrigin()).z();
+
+	ROS_DEBUG_STREAM("measured z: " << z_meas);
+
+	PoseMeasurement z;
+
+	z.t = msg->header.stamp;
+
+	z.z << stateAtMeasTime.x(), stateAtMeasTime.y(), z_meas, stateAtMeasTime.thetax(), stateAtMeasTime.thetay(), stateAtMeasTime.thetaz();
+
+	z.Sigma = Eigen::MatrixXd::Zero(6, 6);
+
+	z.Sigma(0, 0) = INITIAL_POS_SIGMA * 2; // we are even more uncertain that our initial pose sig;
+	z.Sigma(1, 1) = INITIAL_POS_SIGMA * 2;
+	z.Sigma(2, 2) = stateAtMeasTime.Sigma(9, 9) + stateAtMeasTime.Sigma(10, 10) + CONSTANT_SONAR_SIG + SONAR_DIST_SIG_MULTIPLIER * z_meas;
+	z.Sigma(3, 3) = INITIAL_THETA_SIGMA * 2;
+	z.Sigma(4, 4) = INITIAL_THETA_SIGMA * 2;
+	z.Sigma(5, 5) = INITIAL_THETA_SIGMA * 2;
+
+	z.H = this->computePoseMeasurementH();
+
+	this->addMeasurement(z);
+}
 
 
 void EKF::imu_callback(const sensor_msgs::ImuConstPtr& msg)
@@ -161,6 +243,8 @@ void EKF::imu_callback(const sensor_msgs::ImuConstPtr& msg)
 
 void EKF::mantis_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
 {
+	ROS_DEBUG("got mantis");
+
 	PoseMeasurement z;
 
 	z.t = msg->header.stamp;
@@ -204,6 +288,11 @@ void EKF::dipa_callback(const nav_msgs::OdometryConstPtr& msg)
 	//find the closest state estimate and predict to the exact time
 	State stateEstimateAtThisTime = this->process(this->findClosestState(z.t), z.t);
 
+	ROS_DEBUG("odom measurement got");
+
+	ROS_DEBUG_STREAM("transforming odom meas with state: ");
+	stateEstimateAtThisTime.printState();
+
 	//form a world to base transform from the state
 	tf::Transform w2b;
 	tf::Matrix3x3 mat3;
@@ -217,6 +306,8 @@ void EKF::dipa_callback(const nav_msgs::OdometryConstPtr& msg)
 	//in base frame
 	tf::Vector3 angular = base2dipaCam * tf::Vector3(msg->twist.twist.angular.x, msg->twist.twist.angular.y, msg->twist.twist.angular.z) - base2dipaCam * tf::Vector3(0, 0, 0);
 	z.z << linear.x(), linear.y(), linear.z(), angular.x(), angular.y(), angular.z();
+
+	ROS_DEBUG_STREAM("odom meas after transform: " << z.z);
 
 	z.Sigma = Eigen::MatrixXd::Zero(6, 6);
 

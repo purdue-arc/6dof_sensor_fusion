@@ -153,7 +153,9 @@ struct State {
 	}
 
 	void printState(){
-		ROS_INFO_STREAM("State: x: " << x() << " y: " << y() << " z: " <<    z() << " roll: " << thetax() << " pitch: " << thetay() << " yaw: " << thetaz() << " dx: " << dx() << " dy: " << dy() << " dz: " << dz());
+		ROS_INFO_STREAM("State: x: " << x() << " y: " << y() << " z: " <<    z() << " roll: " << thetax() << " pitch: " << thetay() << " yaw: "
+				<< thetaz() << " dx: " << dx() << " dy: " << dy() << " dz: " << dz() <<
+				ax() << " ay: " << ay() << " az: " << az());
 	}
 
 	/*Eigen::Quaterniond getQuaternion() {
