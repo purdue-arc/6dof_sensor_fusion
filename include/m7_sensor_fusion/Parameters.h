@@ -14,6 +14,8 @@
 
 #define BASE_FRAME "base_link"
 #define IMU_FRAME "imu_link"
+#define DIPA_CAM_FRAME "bottom_camera"
+#define SONAR_FRAME "sonar"
 
 #define REMOVE_SIMILAR_MEASUREMENTS false
 

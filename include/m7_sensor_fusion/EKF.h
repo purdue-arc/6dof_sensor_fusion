@@ -41,6 +41,8 @@ public:
 	State state;
 
 	tf::Transform base2imu; // can transform imu measurements into the base coordinate frame
+	tf::Transform base2dipaCam;
+	tf::Transform base2sonar;
 
 	tf::TransformListener tf_listener; // listens for transforms
 

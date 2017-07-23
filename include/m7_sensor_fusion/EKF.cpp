@@ -201,13 +201,33 @@ void EKF::dipa_callback(const nav_msgs::OdometryConstPtr& msg)
 
 	z.t = msg->header.stamp;
 
-	z.z << msg->twist.twist.linear.x, msg->twist.twist.linear.y, msg->twist.twist.linear.z, msg->twist.twist.angular.x, msg->twist.twist.angular.y, msg->twist.twist.angular.z;
+	//find the closest state estimate and predict to the exact time
+	State stateEstimateAtThisTime = this->process(this->findClosestState(z.t), z.t);
+
+	//form a world to base transform from the state
+	tf::Transform w2b;
+	tf::Matrix3x3 mat3;
+	mat3.setRPY(stateEstimateAtThisTime.thetax(), stateEstimateAtThisTime.thetay(), stateEstimateAtThisTime.thetaz());
+	w2b = tf::Transform(mat3, tf::Vector3(stateEstimateAtThisTime.x(), stateEstimateAtThisTime.y(), stateEstimateAtThisTime.z()));
+
+	tf::Transform world2dipaCam = (w2b * base2dipaCam);
+
+	//in world frame
+	tf::Vector3 linear = world2dipaCam * tf::Vector3(msg->twist.twist.linear.x, msg->twist.twist.linear.y, msg->twist.twist.linear.z) - world2dipaCam * tf::Vector3(0, 0, 0);
+	//in base frame
+	tf::Vector3 angular = base2dipaCam * tf::Vector3(msg->twist.twist.angular.x, msg->twist.twist.angular.y, msg->twist.twist.angular.z) - base2dipaCam * tf::Vector3(0, 0, 0);
+	z.z << linear.x(), linear.y(), linear.z(), angular.x(), angular.y(), angular.z();
 
 	z.Sigma = Eigen::MatrixXd::Zero(6, 6);
 
-	z.Sigma(0, 0) = msg->twist.covariance.at(0*6 + 0);//xx
-	z.Sigma(1, 1) = msg->twist.covariance.at(1*6 + 1);//yy
-	z.Sigma(2, 2) = msg->twist.covariance.at(2*6 + 2);//zz
+	double thetaVariance = stateEstimateAtThisTime.Sigma(9, 9) + stateEstimateAtThisTime.Sigma(10, 10) + stateEstimateAtThisTime.Sigma(11, 11);
+
+	ROS_DEBUG_STREAM("sum of theta variance for odom meas: " << thetaVariance);
+
+	//add the sum of theta variance to the linear vel variances
+	z.Sigma(0, 0) = msg->twist.covariance.at(0*6 + 0) + thetaVariance;//xx
+	z.Sigma(1, 1) = msg->twist.covariance.at(1*6 + 1) + thetaVariance;//yy
+	z.Sigma(2, 2) = msg->twist.covariance.at(2*6 + 2) + thetaVariance;//zz
 
 	z.Sigma(3, 3) = msg->twist.covariance.at(3*6 + 3);//wxwx
 	z.Sigma(4, 4) = msg->twist.covariance.at(4*6 + 4);//wywy
@@ -223,6 +243,8 @@ State EKF::process(State prior, ros::Time t)
 	double dt = (t - prior.t).toSec();
 
 	ROS_DEBUG_STREAM("predicting with dt: " << dt);
+
+	ROS_WARN_COND(dt < 0, "PREDICTING BACKWARDS");
 
 	ROS_DEBUG("state before predict: ");
 	prior.printState();
